@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: xinpa-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3307/xinpa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+
+# JWT 配置
+jwt:
+  secret: xinpa-secret-key-change-in-production-must-be-at-least-256-bits-long!!
+  expiration: 86400000  # 24小时
+
+# MinIO 文件存储
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: xinpa
+
+# AI 大模型接口
+ai:
+  api-url: https://api.openai.com/v1/chat/completions
+  api-key: your-api-key-here
+  model: gpt-3.5-turbo
+  daily-limit-free: 10
+  daily-limit-vip: 9999
+
+# 免费版限制
+member:
+  free-storage-mb: 100
+  vip-storage-mb: 10240
+
+# 文件上传
+app:
+  upload-dir: uploads/avatars
