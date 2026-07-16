@@ -1,9 +1,9 @@
 package com.xinpa.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.xinpa.entity.AiCallLog;
+import com.xinpa.entity.PaymentMethod;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface AiCallLogMapper extends BaseMapper<AiCallLog> {
+public interface PaymentMethodMapper extends BaseMapper<PaymentMethod> {
 }

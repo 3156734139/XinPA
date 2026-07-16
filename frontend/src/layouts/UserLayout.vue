@@ -42,10 +42,6 @@
           <el-icon><Money /></el-icon>
           <span>财务记账</span>
         </el-menu-item>
-        <el-menu-item index="/ai">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI辅助</span>
-        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer" v-show="!isCollapse">

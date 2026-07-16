@@ -32,7 +32,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Page<Customer> page(Long userId, String nickname, String contact, String source,
+    public Page<Customer> page(Long userId, String nickname, String contact, Long sourceId,
                                Integer spendLevel, BigDecimal minSpend, BigDecimal maxSpend,
                                Integer minOrders, Integer maxOrders, Integer isBlacklist,
                                long current, long size) {
@@ -42,7 +42,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .eq(isBlacklist != null, Customer::getIsBlacklist, isBlacklist)
                 .like(nickname != null && !nickname.isEmpty(), Customer::getNickname, nickname)
                 .like(contact != null && !contact.isEmpty(), Customer::getContact, contact)
-                .like(source != null && !source.isEmpty(), Customer::getSource, source)
+                .eq(sourceId != null, Customer::getSourceId, sourceId)
                 .eq(spendLevel != null, Customer::getSpendLevel, spendLevel)
                 .ge(minSpend != null, Customer::getTotalSpend, minSpend)
                 .le(maxSpend != null, Customer::getTotalSpend, maxSpend)

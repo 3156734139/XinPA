@@ -64,11 +64,12 @@ public class OrderController {
     @PostMapping
     public Result<Void> create(@RequestBody Order order) {
         order.setUserId(UserContext.getUserId());
-        // 如果传入了套餐ID，自动从套餐表中读取单价并填充
+        // 如果传入了套餐ID，自动从套餐表中读取单价和套餐名称并填充
         if (order.getPackageId() != null) {
             PricePackage pkg = pricePackageService.getById(order.getPackageId());
             if (pkg != null && pkg.getUserId().equals(UserContext.getUserId())) {
                 order.setUnitPrice(pkg.getPrice());
+                order.setPackageName(pkg.getName());
                 if (order.getTitle() == null) {
                     order.setTitle(pkg.getName());
                 }

@@ -25,9 +25,13 @@
           <el-icon><Setting /></el-icon>
           <span>管理员管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/ai-logs">
-          <el-icon><Document /></el-icon>
-          <span>AI调用日志</span>
+        <el-menu-item index="/admin/order-sources">
+          <el-icon><Coin /></el-icon>
+          <span>来源管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/payment-methods">
+          <el-icon><Coin /></el-icon>
+          <span>支付方式管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/announcements">
           <el-icon><Bell /></el-icon>

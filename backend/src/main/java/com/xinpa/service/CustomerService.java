@@ -19,7 +19,7 @@ public interface CustomerService {
     /**
      * 分页查询客户
      */
-    Page<Customer> page(Long userId, String nickname, String contact, String source,
+    Page<Customer> page(Long userId, String nickname, String contact, Long sourceId,
                         Integer spendLevel, BigDecimal minSpend, BigDecimal maxSpend,
                         Integer minOrders, Integer maxOrders, Integer isBlacklist,
                         long current, long size);

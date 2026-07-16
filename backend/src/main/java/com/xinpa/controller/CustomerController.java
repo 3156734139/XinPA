@@ -35,7 +35,7 @@ public class CustomerController {
     public Result<PageResult<Customer>> page(
             @RequestParam(required = false) String nickname,
             @RequestParam(required = false) String contact,
-            @RequestParam(required = false) String source,
+            @RequestParam(required = false) Long sourceId,
             @RequestParam(required = false) Integer spendLevel,
             @RequestParam(required = false) BigDecimal minSpend,
             @RequestParam(required = false) BigDecimal maxSpend,
@@ -45,7 +45,7 @@ public class CustomerController {
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "20") long size) {
         return Result.ok(PageResult.of(
-                customerService.page(UserContext.getUserId(), nickname, contact, source,
+                customerService.page(UserContext.getUserId(), nickname, contact, sourceId,
                         spendLevel, minSpend, maxSpend, minOrders, maxOrders, blacklist, current, size)));
     }
 

@@ -98,12 +98,6 @@ const router = createRouter({
           component: () => import('@/views/user/finance/FinancePage.vue'),
           meta: { title: '财务记账', icon: 'Money' },
         },
-        {
-          path: 'ai',
-          name: 'AI',
-          component: () => import('@/views/user/ai/AiTools.vue'),
-          meta: { title: 'AI辅助', icon: 'MagicStick' },
-        },
       ],
     },
     {
@@ -130,10 +124,16 @@ const router = createRouter({
           meta: { title: '管理员管理', icon: 'Setting' },
         },
         {
-          path: 'ai-logs',
-          name: 'AdminAiLogs',
-          component: () => import('@/views/admin/logs/AiLogs.vue'),
-          meta: { title: 'AI调用日志', icon: 'Document' },
+          path: 'order-sources',
+          name: 'AdminOrderSources',
+          component: () => import('@/views/admin/system/OrderSourceManage.vue'),
+          meta: { title: '来源管理', icon: 'Coin' },
+        },
+        {
+          path: 'payment-methods',
+          name: 'AdminPaymentMethods',
+          component: () => import('@/views/admin/system/PaymentMethodManage.vue'),
+          meta: { title: '支付方式管理', icon: 'Coin' },
         },
         {
           path: 'announcements',

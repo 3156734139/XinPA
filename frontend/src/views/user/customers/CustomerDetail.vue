@@ -11,7 +11,7 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="昵称">{{ customer.nickname }}</el-descriptions-item>
           <el-descriptions-item label="联系方式">{{ customer.contact || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="来源渠道">{{ customer.source || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="来源渠道">{{ getCustomerSource(customer) }}</el-descriptions-item>
           <el-descriptions-item label="陪伴天数">
             {{ customer.createdAt ? companionDays(customer.createdAt) : '-' }}
           </el-descriptions-item>
@@ -37,18 +37,33 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { getCustomerDetail } from '@/api/customers';
+import { getEnabledSources } from '@/api/orderSource';
 
 const route = useRoute();
 const customer = ref<any>(null);
+const sourceMap = ref<Record<number, string>>({});
 
 function companionDays(createdAt: string): string {
   const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
   return days === 0 ? '今天' : `${days}天`;
 }
 
+function getCustomerSource(c: any): string {
+  if (c.sourceId && sourceMap.value[c.sourceId]) {
+    return sourceMap.value[c.sourceId];
+  }
+  return c.source || '-';
+}
+
 onMounted(async () => {
-  const res: any = await getCustomerDetail(Number(route.params.id));
+  // 并行加载客户详情和来源列表
+  const [res, srcRes] = await Promise.all([
+    getCustomerDetail(Number(route.params.id)),
+    getEnabledSources().catch(() => ({ data: [] })),
+  ]);
   customer.value = res.data;
+  const sources: any[] = (srcRes as any).data || [];
+  sources.forEach(s => { sourceMap.value[s.id] = s.name; });
 });
 </script>
 

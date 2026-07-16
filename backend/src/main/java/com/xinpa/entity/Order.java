@@ -18,9 +18,11 @@ public class Order {
     private Long userId;
     private Long customerId;
     private String orderNo;
-    /** 1平台派单 2微信QQ私域 3线下预约 */
+    /** 1pw店 2抖音 3小红书 4其他 */
     private Integer orderSource;
     private Long packageId;
+    /** 套餐名称（冗余字段，创建时从套餐自动填充） */
+    private String packageName;
     private String title;
     /** 1待接单 2进行中 3待结算 4已完结 5售后退款 */
     private Integer status;
@@ -31,6 +33,12 @@ public class Order {
     private BigDecimal totalAmount;
     private BigDecimal discountAmount;
     private BigDecimal finalAmount;
+    /** 支付方式: 平台/微信/支付宝/现金 */
+    private String paymentMethod;
+    /** 关联payment_method.id */
+    private Long paymentMethodId;
+    /** 到手比例(100=100%) */
+    private BigDecimal settleRatio;
     private Integer isOvernight;
     private Integer isOffline;
     private Long couponId;

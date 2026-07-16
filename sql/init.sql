@@ -52,21 +52,6 @@ CREATE TABLE IF NOT EXISTS sys_announcement (
     deleted     TINYINT      NOT NULL DEFAULT 0
 ) ENGINE=InnoDB COMMENT='全平台公告';
 
--- AI调用日志
-CREATE TABLE IF NOT EXISTS ai_call_log (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id     BIGINT       NOT NULL COMMENT '调用用户ID',
-    scene       VARCHAR(64)  NOT NULL COMMENT '场景: intro/chat/risk/activity等',
-    prompt      TEXT         COMMENT '请求内容摘要',
-    response    TEXT         COMMENT '响应内容摘要',
-    tokens      INT          DEFAULT 0 COMMENT '消耗token数',
-    success     TINYINT      NOT NULL DEFAULT 1 COMMENT '是否成功',
-    error_msg   VARCHAR(512) DEFAULT NULL,
-    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_created_at (created_at)
-) ENGINE=InnoDB COMMENT='AI调用日志';
-
 -- ==================== 人设主页 ====================
 
 -- 个人人设主页
@@ -197,7 +182,7 @@ CREATE TABLE IF NOT EXISTS `order` (
     user_id         BIGINT       NOT NULL COMMENT '陪玩用户ID',
     customer_id     BIGINT       DEFAULT NULL COMMENT '客户ID',
     order_no        VARCHAR(32)  NOT NULL UNIQUE COMMENT '订单编号',
-    order_source    TINYINT      NOT NULL COMMENT '来源: 1平台派单 2微信QQ私域 3线下预约',
+    order_source    TINYINT      NOT NULL COMMENT '来源: 1pw店 2抖音 3小红书 4其他',
     package_id      BIGINT       DEFAULT NULL COMMENT '关联套餐ID',
     title           VARCHAR(256) NOT NULL COMMENT '订单标题',
     status          TINYINT      NOT NULL DEFAULT 1 COMMENT '1待接单 2进行中 3待结算 4已完结 5售后退款',
@@ -343,3 +328,47 @@ CREATE TABLE IF NOT EXISTS user_game_config (
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB COMMENT='用户游戏配置';
+
+-- ==================== 订单来源字典 ====================
+
+CREATE TABLE IF NOT EXISTS order_source (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL COMMENT '来源名称',
+    sort_order INT DEFAULT 0,
+    status TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB COMMENT='订单来源字典（全局）';
+
+INSERT IGNORE INTO order_source (name, sort_order) VALUES ('pw店（备注填店名）', 1), ('抖音', 2), ('小红书', 3), ('其他', 4);
+
+-- ==================== 支付方式字典 ====================
+
+CREATE TABLE IF NOT EXISTS payment_method (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL COMMENT '支付方式名称',
+    sort_order INT DEFAULT 0,
+    status TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB COMMENT='支付方式字典（全局）';
+
+INSERT IGNORE INTO payment_method (name, sort_order) VALUES ('平台', 1), ('微信', 2), ('支付宝', 3), ('现金', 4);
+
+-- ==================== 2.0 迁移说明 ====================
+
+-- 1. 订单来源枚举变更: 1平台派单/2微信QQ私域/3线下预约 → 引用 order_source 表ID
+-- 已有数据库执行:
+--   ALTER TABLE customer ADD COLUMN source_id BIGINT DEFAULT NULL COMMENT '关联order_source.id' AFTER source;
+--   ALTER TABLE `order` MODIFY COLUMN order_source BIGINT DEFAULT NULL COMMENT '引用order_source.id';
+
+-- 2. AI辅助模块已删除，相关表 ai_call_log、配置 ai.* 及 Java 代码已移除
+-- 已有数据库执行: DROP TABLE IF EXISTS ai_call_log;
+
+-- 3. 支付方式从硬编码改为 payment_method 字典表，order 表增加 payment_method_id、package_name 字段
+-- 已有数据库执行:
+--   CREATE TABLE IF NOT EXISTS payment_method (id BIGINT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(64) NOT NULL, sort_order INT DEFAULT 0, status TINYINT DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted TINYINT DEFAULT 0) ENGINE=InnoDB COMMENT='支付方式字典（全局）';
+--   INSERT IGNORE INTO payment_method (name, sort_order) VALUES ('平台', 1), ('微信', 2), ('支付宝', 3), ('现金', 4);
+--   ALTER TABLE `order` ADD COLUMN package_name VARCHAR(256) DEFAULT NULL COMMENT '套餐名称' AFTER package_id;
+--   ALTER TABLE `order` ADD COLUMN payment_method_id BIGINT DEFAULT NULL COMMENT '关联payment_method.id' AFTER payment_method;
+--   ALTER TABLE `order` ADD COLUMN settle_ratio DECIMAL(5,2) DEFAULT 100.00 COMMENT '到手比例(100=100%)';

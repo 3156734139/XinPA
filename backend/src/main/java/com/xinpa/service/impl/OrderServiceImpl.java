@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -54,12 +57,62 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void create(Order order) {
-        // 生成订单编号
-        String orderNo = "XO" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + (int)(Math.random() * 1000);
-        order.setOrderNo(orderNo);
-        order.setStatus(1); // 待接单
-        orderMapper.insert(order);
+        // 生成订单编号: XO + SHA-256取前16位
+        try {
+            String raw = System.currentTimeMillis() + String.format("%06d", (int)(Math.random() * 1000000));
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(raw.getBytes());
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            order.setOrderNo("XO" + hex.substring(0, 16).toUpperCase());
+        } catch (NoSuchAlgorithmException e) {
+            // fallback
+            String fallback = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                    + String.format("%04d", (int)(Math.random() * 10000));
+            order.setOrderNo("XO" + fallback);
+        }
+
+        // 如果同时填了开始和结束时间，创建即完成
+        if (order.getStartTime() != null && order.getEndTime() != null) {
+            order.setStatus(4); // 已完结
+
+            // 计算实际分钟数（支持跨零点）
+            long rawMinutes = ChronoUnit.MINUTES.between(order.getStartTime(), order.getEndTime());
+            boolean overnight = rawMinutes < 0;
+            int minutes = overnight ? (int) (rawMinutes + 1440) : (int) rawMinutes;
+            order.setActualMinutes(minutes);
+            order.setIsOvernight(overnight ? 1 : 0);
+
+            // 自动核算费用（计费规则：超过15min算0.5h，超过45min算1h）
+            double billableHours = calcBillableHours(minutes);
+            BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
+            order.setTotalAmount(total);
+
+            BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
+            BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            if (order.getDiscountAmount() == null) {
+                order.setDiscountAmount(BigDecimal.ZERO);
+            }
+            order.setFinalAmount(afterRatio.subtract(order.getDiscountAmount()));
+
+            order.setSettleTime(LocalDateTime.now());
+            orderMapper.insert(order);
+
+            // 自动产生收入记录（同 settle() 逻辑）
+            FinanceRecord record = new FinanceRecord();
+            record.setUserId(order.getUserId());
+            record.setOrderId(order.getId());
+            record.setRecordType(1);
+            record.setCategory("陪玩收入");
+            record.setAmount(order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO);
+            record.setRecordDate(LocalDate.now());
+            financeRecordMapper.insert(record);
+        } else {
+            order.setStatus(1); // 待接单
+            orderMapper.insert(order);
+        }
     }
 
     @Override
@@ -99,10 +152,17 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(3); // 待结算
         order.setEndTime(LocalDateTime.now());
 
-        // 自动核算费用
-        BigDecimal totalHours = BigDecimal.valueOf((order.getActualMinutes() + order.getExtraMinutes()) / 60.0);
-        order.setTotalAmount(order.getUnitPrice().multiply(totalHours));
-        order.setFinalAmount(order.getTotalAmount().subtract(order.getDiscountAmount()));
+        // 自动核算费用（计费规则：超过15min算0.5h，超过45min算1h）
+        double billableHours = calcBillableHours(order.getActualMinutes() + order.getExtraMinutes());
+        BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
+        order.setTotalAmount(total);
+
+        BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
+        BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        if (order.getDiscountAmount() == null) {
+            order.setDiscountAmount(BigDecimal.ZERO);
+        }
+        order.setFinalAmount(afterRatio.subtract(order.getDiscountAmount()));
 
         orderMapper.updateById(order);
 
@@ -127,9 +187,16 @@ public class OrderServiceImpl implements OrderService {
         order.setSettleTime(LocalDateTime.now());
         order.setStatus(4); // 已完结
 
-        BigDecimal totalHours = BigDecimal.valueOf((order.getActualMinutes() + order.getExtraMinutes()) / 60.0);
-        order.setTotalAmount(order.getUnitPrice().multiply(totalHours));
-        order.setFinalAmount(order.getTotalAmount().subtract(order.getDiscountAmount()));
+        double billableHours = calcBillableHours(order.getActualMinutes() + order.getExtraMinutes());
+        BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
+        order.setTotalAmount(total);
+
+        BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
+        BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        if (order.getDiscountAmount() == null) {
+            order.setDiscountAmount(BigDecimal.ZERO);
+        }
+        order.setFinalAmount(afterRatio.subtract(order.getDiscountAmount()));
 
         orderMapper.updateById(order);
 
@@ -158,9 +225,16 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) throw new BusinessException("订单不存在");
         order.setExtraMinutes(order.getExtraMinutes() + dto.getExtraMinutes());
 
-        BigDecimal totalHours = BigDecimal.valueOf((order.getActualMinutes() + order.getExtraMinutes()) / 60.0);
-        order.setTotalAmount(order.getUnitPrice().multiply(totalHours));
-        order.setFinalAmount(order.getTotalAmount().subtract(order.getDiscountAmount()));
+        double billableHours = calcBillableHours(order.getActualMinutes() + order.getExtraMinutes());
+        BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
+        order.setTotalAmount(total);
+
+        BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
+        BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        if (order.getDiscountAmount() == null) {
+            order.setDiscountAmount(BigDecimal.ZERO);
+        }
+        order.setFinalAmount(afterRatio.subtract(order.getDiscountAmount()));
         orderMapper.updateById(order);
 
         OrderTimerLog log = new OrderTimerLog();
@@ -203,5 +277,20 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) throw new BusinessException("订单不存在");
         order.setStatus(5); // 售后退款
         orderMapper.updateById(order);
+    }
+
+    /**
+     * 计费规则：超过15min算0.5小时，超过45min算1小时
+     */
+    private static double calcBillableHours(int totalMinutes) {
+        int hours = totalMinutes / 60;
+        int remainder = totalMinutes % 60;
+        double extra = 0;
+        if (remainder > 45) {
+            extra = 1;
+        } else if (remainder > 15) {
+            extra = 0.5;
+        }
+        return hours + extra;
     }
 }

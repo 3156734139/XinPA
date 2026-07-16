@@ -1,17 +1,15 @@
 package com.xinpa.controller.admin;
 
 import com.xinpa.common.BusinessException;
-import com.xinpa.common.PageResult;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
-import com.xinpa.entity.AiCallLog;
+import com.xinpa.entity.OrderSource;
 import com.xinpa.entity.SysAdmin;
 import com.xinpa.entity.SysAnnouncement;
-import com.xinpa.mapper.AiCallLogMapper;
 import com.xinpa.mapper.SysAdminMapper;
+import com.xinpa.service.OrderSourceService;
 import com.xinpa.service.SysAnnouncementService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +25,9 @@ import java.util.List;
 public class AdminSystemController {
 
     private final SysAdminMapper sysAdminMapper;
-    private final AiCallLogMapper aiCallLogMapper;
     private final SysAnnouncementService sysAnnouncementService;
+    private final OrderSourceService orderSourceService;
+    private final com.xinpa.service.PaymentMethodService paymentMethodService;
     private final PasswordEncoder passwordEncoder;
 
     // ==================== 管理员管理 ====================
@@ -88,20 +87,6 @@ public class AdminSystemController {
         return Result.ok();
     }
 
-    // ==================== AI调用日志 ====================
-
-    /**
-     * AI调用日志分页
-     */
-    @GetMapping("/ai-logs")
-    public Result<PageResult<AiCallLog>> aiLogs(
-            @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "20") long size) {
-        Page<AiCallLog> page = aiCallLogMapper.selectPage(new Page<>(current, size),
-                new LambdaQueryWrapper<AiCallLog>().orderByDesc(AiCallLog::getCreatedAt));
-        return Result.ok(PageResult.of(page));
-    }
-
     // ==================== 公告管理 ====================
 
     /**
@@ -137,6 +122,112 @@ public class AdminSystemController {
     @DeleteMapping("/announcements/{id}")
     public Result<Void> deleteAnnouncement(@PathVariable Long id) {
         sysAnnouncementService.delete(id);
+        return Result.ok();
+    }
+
+    // ==================== 订单来源管理 ====================
+
+    /**
+     * 来源列表
+     */
+    @GetMapping("/order-sources")
+    public Result<List<OrderSource>> listOrderSources() {
+        return Result.ok(orderSourceService.listAll());
+    }
+
+    /**
+     * 已启用的来源列表（供用户端下拉选单）
+     */
+    @GetMapping("/order-sources/list-enabled")
+    public Result<List<OrderSource>> listEnabledSources() {
+        return Result.ok(orderSourceService.listEnabled());
+    }
+
+    /**
+     * 新增来源
+     */
+    @PostMapping("/order-sources")
+    public Result<Void> createOrderSource(@RequestBody OrderSource source) {
+        orderSourceService.create(source);
+        return Result.ok();
+    }
+
+    /**
+     * 更新来源
+     */
+    @PutMapping("/order-sources")
+    public Result<Void> updateOrderSource(@RequestBody OrderSource source) {
+        orderSourceService.update(source);
+        return Result.ok();
+    }
+
+    /**
+     * 删除来源
+     */
+    @DeleteMapping("/order-sources/{id}")
+    public Result<Void> deleteOrderSource(@PathVariable Long id) {
+        orderSourceService.delete(id);
+        return Result.ok();
+    }
+
+    /**
+     * 启用/禁用来源
+     */
+    @PutMapping("/order-sources/{id}/status")
+    public Result<Void> toggleOrderSourceStatus(@PathVariable Long id, @RequestParam Integer status) {
+        OrderSource source = new OrderSource();
+        source.setId(id);
+        source.setStatus(status);
+        orderSourceService.update(source);
+        return Result.ok();
+    }
+
+    // ==================== 支付方式管理 ====================
+
+    /**
+     * 支付方式列表
+     */
+    @GetMapping("/payment-methods")
+    public Result<List<com.xinpa.entity.PaymentMethod>> listPaymentMethods() {
+        return Result.ok(paymentMethodService.listAll());
+    }
+
+    /**
+     * 新增支付方式
+     */
+    @PostMapping("/payment-methods")
+    public Result<Void> createPaymentMethod(@RequestBody com.xinpa.entity.PaymentMethod paymentMethod) {
+        paymentMethodService.create(paymentMethod);
+        return Result.ok();
+    }
+
+    /**
+     * 更新支付方式
+     */
+    @PutMapping("/payment-methods")
+    public Result<Void> updatePaymentMethod(@RequestBody com.xinpa.entity.PaymentMethod paymentMethod) {
+        paymentMethodService.update(paymentMethod);
+        return Result.ok();
+    }
+
+    /**
+     * 删除支付方式
+     */
+    @DeleteMapping("/payment-methods/{id}")
+    public Result<Void> deletePaymentMethod(@PathVariable Long id) {
+        paymentMethodService.delete(id);
+        return Result.ok();
+    }
+
+    /**
+     * 启用/禁用支付方式
+     */
+    @PutMapping("/payment-methods/{id}/status")
+    public Result<Void> togglePaymentMethodStatus(@PathVariable Long id, @RequestParam Integer status) {
+        com.xinpa.entity.PaymentMethod pm = new com.xinpa.entity.PaymentMethod();
+        pm.setId(id);
+        pm.setStatus(status);
+        paymentMethodService.update(pm);
         return Result.ok();
     }
 }

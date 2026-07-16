@@ -81,7 +81,12 @@
 
       <el-col :span="10" class="mb-16">
         <el-card shadow="never">
-          <template #header><span>月度目标</span></template>
+          <template #header>
+            <span style="display:flex;align-items:center;justify-content:space-between">
+              月度目标
+              <el-button size="small" link @click="openTargetEdit">编辑</el-button>
+            </span>
+          </template>
           <div v-if="setting">
             <div class="target-progress">
               <div class="target-label">目标: {{ setting.monthlyTarget }} 元</div>
@@ -135,19 +140,34 @@
         <el-button type="primary" @click="handleCreate">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 设定月度目标 -->
+    <el-dialog v-model="showTargetEdit" title="设定月度目标" width="400px">
+      <el-form label-width="120px">
+        <el-form-item label="月目标(元)">
+          <el-input-number v-model="targetEditValue" :precision="2" :min="0" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showTargetEdit = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveTarget">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getFinanceStats, getFinanceSetting, withdrawCalc } from '@/api/finance';
+import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getFinanceStats, getFinanceSetting, updateFinanceSetting, withdrawCalc } from '@/api/finance';
 
 const stats = ref<any>({});
 const records = ref<any[]>([]);
 const recordTotal = ref(0);
 const setting = ref<any>(null);
 const showCreate = ref(false);
+const showTargetEdit = ref(false);
+const targetEditValue = ref(0);
 const withdrawAmount = ref(0);
 const withdrawResult = ref<any>(null);
 const query = reactive({ type: undefined as number | undefined, current: 1, size: 20 });
@@ -176,6 +196,18 @@ async function loadRecords() {
 async function loadSetting() {
   const res: any = await getFinanceSetting();
   setting.value = res.data;
+}
+
+function openTargetEdit() {
+  targetEditValue.value = setting.value?.monthlyTarget || 0;
+  showTargetEdit.value = true;
+}
+
+async function handleSaveTarget() {
+  await updateFinanceSetting({ ...setting.value, monthlyTarget: targetEditValue.value });
+  ElMessage.success('目标已更新');
+  showTargetEdit.value = false;
+  loadSetting();
 }
 
 async function handleCreate() {

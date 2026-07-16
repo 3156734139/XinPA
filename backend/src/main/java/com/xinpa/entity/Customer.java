@@ -20,6 +20,8 @@ public class Customer {
     private String nickname;
     private String contact;
     private String source;
+    /** 关联order_source.id */
+    private Long sourceId;
     private Integer spendLevel;
     private String gamePreference;
     private String personality;
