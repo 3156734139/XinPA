@@ -116,8 +116,65 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(Order order) {
+        Order existing = orderMapper.selectById(order.getId());
+        if (existing == null) throw new BusinessException("订单不存在");
+
+        // 如果传了开始/结束时间，重新核算费用（支持跨零点）
+        if (order.getStartTime() != null && order.getEndTime() != null) {
+            long rawMinutes = ChronoUnit.MINUTES.between(order.getStartTime(), order.getEndTime());
+            boolean overnight = rawMinutes < 0;
+            int minutes = overnight ? (int) (rawMinutes + 1440) : (int) rawMinutes;
+            order.setActualMinutes(minutes);
+            order.setIsOvernight(overnight ? 1 : 0);
+
+            double billableHours = calcBillableHours(minutes);
+            BigDecimal unitPrice = order.getUnitPrice() != null ? order.getUnitPrice() : existing.getUnitPrice();
+            BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(billableHours));
+            order.setTotalAmount(total);
+
+            BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio()
+                    : (existing.getSettleRatio() != null ? existing.getSettleRatio() : new BigDecimal("100"));
+            BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            BigDecimal discount = existing.getDiscountAmount() != null ? existing.getDiscountAmount() : BigDecimal.ZERO;
+            order.setDiscountAmount(discount);
+            order.setFinalAmount(afterRatio.subtract(discount));
+
+            // 待接单→已完结
+            if (existing.getStatus() == 1) {
+                order.setStatus(4);
+                order.setSettleTime(LocalDateTime.now());
+            }
+        }
+
         orderMapper.updateById(order);
+
+        // 同步更新财务记录
+        BigDecimal finalAmount = order.getFinalAmount() != null ? order.getFinalAmount() : existing.getFinalAmount();
+        Integer newStatus = order.getStatus() != null ? order.getStatus() : existing.getStatus();
+        if (finalAmount != null && finalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            FinanceRecord record = financeRecordMapper.selectOne(
+                    new LambdaQueryWrapper<FinanceRecord>()
+                            .eq(FinanceRecord::getOrderId, order.getId())
+                            .eq(FinanceRecord::getRecordType, 1)
+                            .last("LIMIT 1"));
+            if (record != null) {
+                // 更新已有财务记录
+                record.setAmount(finalAmount);
+                financeRecordMapper.updateById(record);
+            } else if (existing.getStatus() == 1 && newStatus == 4) {
+                // 待接单→已完结，新增财务记录
+                FinanceRecord newRecord = new FinanceRecord();
+                newRecord.setUserId(existing.getUserId());
+                newRecord.setOrderId(order.getId());
+                newRecord.setRecordType(1);
+                newRecord.setCategory("陪玩收入");
+                newRecord.setAmount(finalAmount);
+                newRecord.setRecordDate(LocalDate.now());
+                financeRecordMapper.insert(newRecord);
+            }
+        }
     }
 
     @Override
