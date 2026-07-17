@@ -9,10 +9,10 @@ export function formatDateTime(dt: string | null | undefined): string {
 }
 
 /**
- * 格式化时长：将 actualMinutes 转为 XhYmin 格式
+ * 格式化时长：将 actualMinutes + extraMinutes 转为 XhYmin 格式
  */
-export function formatDuration(row: { actualMinutes?: number | null }): string {
-  const minutes = row.actualMinutes || 0;
+export function formatDuration(row: { actualMinutes?: number | null; extraMinutes?: number | null }): string {
+  const minutes = (row.actualMinutes || 0) + (row.extraMinutes || 0);
   if (minutes === 0) return '-';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

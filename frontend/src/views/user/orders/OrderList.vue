@@ -198,6 +198,13 @@
         <el-form-item label="备注">
           <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="订单备注" />
         </el-form-item>
+        <el-form-item v-if="editingRow && (editingRow.actualMinutes || editingRow.extraMinutes)" label="累计计时">
+          <span style="color:#666;font-size:13px">
+            原始 {{ formatDuration({ actualMinutes: editingRow.actualMinutes }) }}
+            <template v-if="editingRow.extraMinutes"> + 补时 {{ formatDuration({ actualMinutes: editingRow.extraMinutes }) }}</template>
+            = <b style="color:#e8789a">{{ formatDuration({ actualMinutes: editingRow.actualMinutes, extraMinutes: editingRow.extraMinutes }) }}</b>
+          </span>
+        </el-form-item>
         <el-form-item v-if="actualMinutes > 0" label=" ">
           <div class="summary-row">
             <span class="summary-label">费用合计</span>
@@ -235,6 +242,7 @@ const list = ref<any[]>([]);
 const total = ref(0);
 const showDialog = ref(false);
 const editId = ref<number | null>(null);
+const editingRow = ref<any>(null);
 const saving = ref(false);
 const customerList = ref<CustomerItem[]>([]);
 const packageList = ref<PackageItem[]>([]);
@@ -409,6 +417,7 @@ function statusType(s: number) {
 
 function resetForm() {
   editId.value = null;
+  editingRow.value = null;
   form.orderSource = orderSources.value.length > 0 ? orderSources.value[0].id : 1;
   form.paymentMethodId = undefined;
   form.packageId = undefined;
@@ -428,6 +437,7 @@ function openCreate() {
 
 function openEdit(row: any) {
   editId.value = row.id;
+  editingRow.value = row;
   form.orderSource = row.orderSource || (orderSources.value.length > 0 ? orderSources.value[0].id : 1);
   form.paymentMethodId = row.paymentMethodId || undefined;
   form.packageId = row.packageId || undefined;

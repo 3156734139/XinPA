@@ -204,7 +204,8 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) throw new BusinessException("订单不存在");
         if (order.getStatus() != 2) throw new BusinessException("订单未在进行中");
 
-        int minutes = (int) ChronoUnit.MINUTES.between(order.getStartTime(), LocalDateTime.now());
+        int rawMinutes = (int) ChronoUnit.MINUTES.between(order.getStartTime(), LocalDateTime.now());
+        int minutes = rawMinutes < 0 ? rawMinutes + 1440 : rawMinutes;
         order.setActualMinutes(order.getActualMinutes() + minutes);
         order.setStatus(3); // 待结算
         order.setEndTime(LocalDateTime.now());
@@ -238,7 +239,8 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) throw new BusinessException("订单不存在");
         if (order.getStatus() != 2) throw new BusinessException("订单未在进行中");
 
-        int minutes = (int) ChronoUnit.MINUTES.between(order.getStartTime(), LocalDateTime.now());
+        int rawMinutes = (int) ChronoUnit.MINUTES.between(order.getStartTime(), LocalDateTime.now());
+        int minutes = rawMinutes < 0 ? rawMinutes + 1440 : rawMinutes;
         order.setActualMinutes(order.getActualMinutes() + minutes);
         order.setEndTime(LocalDateTime.now());
         order.setSettleTime(LocalDateTime.now());
