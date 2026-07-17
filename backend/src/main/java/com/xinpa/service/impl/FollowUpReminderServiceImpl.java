@@ -65,15 +65,5 @@ public class FollowUpReminderServiceImpl implements FollowUpReminderService {
         r1.setRemindTime(LocalDateTime.now().plusDays(3));
         r1.setStatus(0);
         followUpReminderMapper.insert(r1);
-
-        // 下单7天后回访
-        FollowUpReminder r2 = new FollowUpReminder();
-        r2.setUserId(userId);
-        r2.setCustomerId(customerId);
-        r2.setOrderId(orderId);
-        r2.setRemindType(2);
-        r2.setRemindTime(LocalDateTime.now().plusDays(7));
-        r2.setStatus(0);
-        followUpReminderMapper.insert(r2);
     }
 }

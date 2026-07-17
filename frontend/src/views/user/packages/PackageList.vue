@@ -23,7 +23,7 @@
         <!-- 联动：收入 -->
         <el-table-column label="收入(元)" width="110" align="center">
           <template #default="{ row }">
-            <span class="link-text" @click="viewFinance(row)">{{ formatMoney(row.totalRevenue) }}</span>
+            <span>{{ formatMoney(row.totalRevenue) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="70">
@@ -141,14 +141,6 @@ function quickOrder(row: any) {
 function viewOrders(row: any) {
   router.push({
     path: '/orders',
-    query: { packageId: row.id },
-  });
-}
-
-/** 查看该套餐的财务 */
-function viewFinance(row: any) {
-  router.push({
-    path: '/finance',
     query: { packageName: row.name },
   });
 }

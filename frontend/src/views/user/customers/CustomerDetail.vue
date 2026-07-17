@@ -15,7 +15,12 @@
           <el-descriptions-item label="陪伴天数">
             {{ customer.createdAt ? companionDays(customer.createdAt) : '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="优惠等级">{{ ['', 'VIP1', 'VIP2', 'VIP3', 'VIP4', 'VIP5', 'VIP6'][customer.spendLevel] || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="优惠等级">
+            <template v-if="customer.spendLevel && customer.spendLevel > 0">
+              <el-tag size="small" :style="vipTagStyle(customer)">{{ vipLabel(customer) }}</el-tag>
+            </template>
+            <span v-else>-</span>
+          </el-descriptions-item>
           <el-descriptions-item label="累计消费">
             <el-link type="primary" @click="showOrderHistory" :underline="false" style="cursor: pointer;">
               {{ customer.totalSpend }} 元
@@ -92,6 +97,27 @@ const loadingOrders = ref(false);
 function companionDays(createdAt: string): string {
   const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000) + 1;
   return `${days}天`;
+}
+
+function vipLabel(c: any): string {
+  if (c.spendLevelName) {
+    return c.spendLevelDiscount != null && c.spendLevelDiscount < 100
+      ? `${c.spendLevelName}（${c.spendLevelDiscount}折）`
+      : c.spendLevelName;
+  }
+  return `VIP${c.spendLevel}`;
+}
+
+function vipTagStyle(c: any): Record<string, string> {
+  const level = c.spendLevel || 1;
+  const max = 20;
+  const idx = Math.min(level, max);
+  const lightness = 92 - (idx - 1) * (42 / (max - 1));
+  return {
+    backgroundColor: `hsl(340, 70%, ${lightness}%)`,
+    borderColor: `hsl(340, 70%, ${lightness - 6}%)`,
+    color: lightness < 55 ? '#fff' : `hsl(340, 50%, ${Math.max(lightness - 55, 18)}%)`,
+  };
 }
 
 function getCustomerSource(c: any): string {

@@ -116,6 +116,13 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public void updateSpendLevel(Long id, int level) {
+        customerMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers.<Customer>lambdaUpdate()
+                .eq(Customer::getId, id)
+                .set(Customer::getSpendLevel, level));
+    }
+
+    @Override
     public long countByUserId(Long userId) {
         return customerMapper.selectCount(
                 new LambdaQueryWrapper<Customer>()

@@ -8,6 +8,7 @@ import com.xinpa.entity.FinanceRecord;
 import com.xinpa.entity.Order;
 import com.xinpa.entity.PaymentMethod;
 import com.xinpa.entity.PricePackage;
+import com.xinpa.entity.VipLevel;
 import com.xinpa.mapper.FinanceRecordMapper;
 import com.xinpa.mapper.OrderMapper;
 import com.xinpa.mapper.PaymentMethodMapper;
@@ -15,6 +16,7 @@ import com.xinpa.mapper.PricePackageMapper;
 import com.xinpa.service.CustomerService;
 import com.xinpa.service.FollowUpReminderService;
 import com.xinpa.service.OrderService;
+import com.xinpa.service.VipLevelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentMethodMapper paymentMethodMapper;
     private final CustomerService customerService;
     private final FollowUpReminderService followUpReminderService;
+    private final VipLevelService vipLevelService;
     private final PricePackageMapper pricePackageMapper;
 
     @Override
@@ -73,6 +76,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (query.getMaxMinutes() != null) {
             wrapper.le(Order::getActualMinutes, query.getMaxMinutes());
+        }
+        if (StringUtils.hasText(query.getPackageName())) {
+            wrapper.like(Order::getPackageName, query.getPackageName().trim());
         }
         if (StringUtils.hasText(query.getKeyword())) {
             String kw = query.getKeyword().trim();
@@ -132,10 +138,12 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
         BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        if (order.getDiscountAmount() == null) {
-            order.setDiscountAmount(BigDecimal.ZERO);
-        }
-        order.setFinalAmount(afterRatio.subtract(order.getDiscountAmount()));
+        BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        // 自动应用客户VIP折扣
+        BigDecimal vipDiscount = calcVipDiscount(order.getCustomerId(), afterRatio);
+        discount = discount.add(vipDiscount);
+        order.setDiscountAmount(discount);
+        order.setFinalAmount(afterRatio.subtract(discount));
         order.setSettleTime(LocalDateTime.now());
 
         orderMapper.insert(order);
@@ -187,6 +195,10 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
             BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount()
                     : (existing.getDiscountAmount() != null ? existing.getDiscountAmount() : BigDecimal.ZERO);
+            // 自动应用客户VIP折扣
+            Long customerId = order.getCustomerId() != null ? order.getCustomerId() : existing.getCustomerId();
+            BigDecimal vipDiscount = calcVipDiscount(customerId, afterRatio);
+            discount = discount.add(vipDiscount);
             order.setDiscountAmount(discount);
             order.setFinalAmount(afterRatio.subtract(discount));
         }
@@ -225,6 +237,25 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<Map<String, Object>> getPackageStats(Long userId) {
         return orderMapper.selectPackageStats(userId);
+    }
+
+    /**
+     * 根据客户的VIP等级计算折扣金额
+     */
+    private BigDecimal calcVipDiscount(Long customerId, BigDecimal afterRatio) {
+        if (customerId == null) return BigDecimal.ZERO;
+        Customer customer = customerService.getById(customerId);
+        if (customer == null || customer.getSpendLevel() == null || customer.getSpendLevel() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        for (VipLevel vl : vipLevels) {
+            if (vl.getLevel().equals(customer.getSpendLevel()) && vl.getDiscount() != null && vl.getDiscount() < 100) {
+                return afterRatio.multiply(BigDecimal.valueOf(100 - vl.getDiscount()))
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            }
+        }
+        return BigDecimal.ZERO;
     }
 
     /**

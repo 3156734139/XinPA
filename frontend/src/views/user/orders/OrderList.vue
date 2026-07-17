@@ -103,7 +103,7 @@
           </template>
         </el-table-column>
         <el-table-column label="时长" width="80">
-          <template #default="{ row }">{{ formatDuration(row) }}</template>
+          <template #default="{ row }">{{ formatDuration({ actualMinutes: row.actualMinutes }) }}</template>
         </el-table-column>
         <el-table-column prop="finalAmount" label="金额(元)" width="100" />
         <el-table-column label="支付方式" width="90">
@@ -112,13 +112,13 @@
         <el-table-column label="到手比例" width="90">
           <template #default="{ row }">{{ row.settleRatio ?? 100 }}%</template>
         </el-table-column>
-        <el-table-column label="开始时间" width="140">
+        <el-table-column label="开始时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.startTime) }}</template>
         </el-table-column>
-        <el-table-column label="结束时间" width="140">
+        <el-table-column label="结束时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.endTime) }}</template>
         </el-table-column>
-        <el-table-column label="创建时间" width="140">
+        <el-table-column label="创建时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right">
@@ -161,7 +161,7 @@
         </el-form-item>
 
         <el-form-item label="来源" prop="orderSource">
-          <el-select v-model="form.orderSource" style="width:100%">
+          <el-select v-model="form.orderSource" disabled style="width:100%">
             <el-option
               v-for="s in orderSources"
               :key="s.id"
@@ -245,6 +245,13 @@
           <span style="margin-left:4px;color:#999">%</span>
         </el-form-item>
 
+        <el-form-item v-if="currentVip" label="VIP折扣">
+          <span style="color:#e8789a;font-weight:bold">
+            {{ currentVip.name }} — {{ currentVip.discount }}折
+            <span style="font-weight:normal;color:#999;margin-left:4px">（自动减免 {{ (100 - currentVip.discount) }}%）</span>
+          </span>
+        </el-form-item>
+
         <el-form-item label="备注">
           <el-input v-model="form.remark" :rows="2" placeholder="订单备注（选填）" />
         </el-form-item>
@@ -255,11 +262,18 @@
             = <b style="color:#e8789a">{{ formatDuration({ actualMinutes: editingRow.actualMinutes, extraMinutes: editingRow.extraMinutes }) }}</b>
           </span>
         </el-form-item>
-        <el-form-item v-if="actualMinutes > 0" label=" ">
+        <el-form-item v-if="actualMinutes > 0" style="margin-bottom:0">
           <div class="summary-row">
             <span class="summary-label">费用合计</span>
-            <span class="summary-amount">¥{{ rawAmount.toFixed(2) }}</span>
-            <span class="summary-parenthesis">（到手比例{{ form.settleRatio }}%：¥{{ estimatedAmount.toFixed(2) }}）</span>
+            <span class="summary-amount">¥{{ finalAmount.toFixed(2) }}</span>
+            <span class="summary-parenthesis">
+              <template v-if="currentVip">
+                （到手比例{{ form.settleRatio }}%，{{ currentVip.name }}打{{ currentVip.discount }}折 → ¥{{ finalAmount.toFixed(2) }}）
+              </template>
+              <template v-else>
+                （到手比例{{ form.settleRatio }}%）
+              </template>
+            </span>
           </div>
         </el-form-item>
       </el-form>
@@ -272,11 +286,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { getOrders, createOrder, updateOrder } from '@/api/orders';
 import { getCustomerList } from '@/api/customers';
+import { getVipConfigs } from '@/api/customers';
 import { getPackages } from '@/api/profile';
 import { getEnabledSources } from '@/api/orderSource';
 import { getEnabledPaymentMethods } from '@/api/paymentMethod';
@@ -285,7 +301,7 @@ import { getStatusLabel as statusLabel, getStatusType as statusType } from '@/ty
 import PixelSticker from '@/components/PixelSticker.vue';
 
 /* ===== 类型 ===== */
-interface CustomerItem { id: number; nickname: string; contact: string; sourceId?: number }
+interface CustomerItem { id: number; nickname: string; contact: string; sourceId?: number; spendLevel?: number }
 interface PackageItem { id: number; name: string; price: number; unit: string }
 interface SourceItem { id: number; name: string }
 interface PaymentMethodItem { id: number; name: string }
@@ -303,14 +319,18 @@ const packageList = ref<PackageItem[]>([]);
 const orderSources = ref<SourceItem[]>([]);
 const paymentMethods = ref<PaymentMethodItem[]>([]);
 const paymentMethodMap = ref<Record<number, string>>({});
+const vipConfigs = ref<any[]>([]);
 const startTimeVal = ref<string | null>(null);
 const endTimeVal = ref<string | null>(null);
 const formRef = ref<FormInstance>();
+
+const route = useRoute();
 
 const query = reactive({
   source: undefined as number | undefined,
   customerId: undefined as number | undefined,
   keyword: '',
+  packageName: '',
   dateRange: null as string[] | null,
   minAmount: undefined as number | undefined,
   maxAmount: undefined as number | undefined,
@@ -402,6 +422,22 @@ const estimatedAmount = computed(() => {
   return rawAmount.value * ratio;
 });
 
+/** 最终金额（含到手比例 + VIP折扣） */
+const finalAmount = computed(() => {
+  if (actualMinutes.value <= 0) return 0;
+  const afterRatio = estimatedAmount.value;
+  if (!currentVip.value) return afterRatio;
+  return afterRatio * (currentVip.value.discount / 100);
+});
+
+/** 当前所选客户的VIP等级折扣 */
+const currentVip = computed(() => {
+  if (!form.customerId || !vipConfigs.value.length) return null;
+  const c = customerList.value.find(c => c.id === form.customerId);
+  if (!c || !c.spendLevel || c.spendLevel <= 0) return null;
+  return vipConfigs.value.find((v: any) => v.level === c.spendLevel) || null;
+});
+
 function getPaymentMethodName(id: number | undefined | null): string {
   if (!id) return '';
   return paymentMethodMap.value[id] || '';
@@ -439,7 +475,22 @@ function onPackageChange(val: number | undefined) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadList(), loadCustomers(), loadPackages(), loadSources(), loadPaymentMethods()]);
+  // 从路由参数自动填充筛选条件（来自套餐管理点击跳转）
+  if (route.query.packageName) {
+    query.packageName = route.query.packageName as string;
+  }
+  await Promise.all([loadList(), loadCustomers(), loadPackages(), loadSources(), loadPaymentMethods(), loadVipConfigs()]);
+});
+
+// 监听路由参数变化：点击侧栏 Tab 回到 /orders 时重置筛选条件
+watch(() => route.query.packageName, (newVal) => {
+  if (newVal !== undefined) {
+    query.packageName = newVal as string;
+  } else {
+    query.packageName = '';
+  }
+  query.current = 1;
+  loadList();
 });
 
 async function loadList() {
@@ -449,6 +500,7 @@ async function loadList() {
       source: query.source,
       customerId: query.customerId,
       keyword: query.keyword || undefined,
+      packageName: query.packageName || undefined,
       current: query.current,
       size: query.size,
     };
@@ -477,6 +529,7 @@ function handleReset() {
   query.source = undefined;
   query.customerId = undefined;
   query.keyword = '';
+  query.packageName = '';
   query.dateRange = null;
   query.minAmount = undefined;
   query.maxAmount = undefined;
@@ -515,6 +568,13 @@ async function loadPaymentMethods() {
     const res: any = await getEnabledPaymentMethods();
     paymentMethods.value = res.data || [];
     paymentMethods.value.forEach(m => { paymentMethodMap.value[m.id] = m.name; });
+  } catch { /* ignore */ }
+}
+
+async function loadVipConfigs() {
+  try {
+    const res: any = await getVipConfigs();
+    vipConfigs.value = res.data || [];
   } catch { /* ignore */ }
 }
 
@@ -646,10 +706,10 @@ async function handleSave() {
 .range-input { display: flex; align-items: center; gap: 4px; }
 .range-input .el-input-number { width: 110px; }
 .range-sep { color: #999; flex-shrink: 0; }
-.summary-row { text-align: right; padding: 8px 0; border-top: 1px solid #eee; width: 100%; }
-.summary-label { color: #999; font-size: 13px; margin-right: 8px; }
-.summary-amount { color: #e8789a; font-size: 16px; font-weight: bold; }
-.summary-parenthesis { color: #999; font-size: 13px; margin-left: 4px; }
+.summary-row { display: flex; align-items: baseline; padding: 8px 20px 8px 0; border-top: 1px solid #eee; width: 100%; box-sizing: border-box; }
+.summary-label { color: #999; font-size: 14px; margin-right: 8px; flex-shrink: 0; }
+.summary-amount { color: #e8789a; font-size: 18px; font-weight: bold; flex-shrink: 0; }
+.summary-parenthesis { color: #999; font-size: 13px; margin-left: 4px; white-space: nowrap; }
 
 /* 表格行悬停增强 */
 :deep(.el-table__body tr) {

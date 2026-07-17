@@ -34,7 +34,7 @@
                 v-for="v in vipConfigs"
                 :key="v.level"
                 :value="v.level"
-                :label="v.label"
+                :label="v.name"
               />
             </el-select>
           </el-form-item>
@@ -97,7 +97,7 @@
             </el-link>
           </template>
         </el-table-column>
-        <el-table-column label="优惠等级" width="110">
+        <el-table-column label="优惠等级" width="150">
           <template #header>
             <span>
               优惠等级
@@ -105,7 +105,7 @@
                 <template #content>
                   <div style="font-size:13px;line-height:1.8;white-space:nowrap">
                     <div v-for="v in vipConfigs" :key="v.level">
-                      累计消费 ≥ {{ v.threshold }} → {{ v.label }}（{{ v.discount }}折）
+                      累计消费 ≥ {{ v.threshold }} → {{ v.name }}（{{ v.discount }}折）
                     </div>
                   </div>
                 </template>
@@ -205,7 +205,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { getCustomers, createCustomer, updateCustomer, addBlacklist as apiBlacklist, removeBlacklist as apiRemove, getVipConfigs } from '@/api/customers';
@@ -243,6 +244,8 @@ const orderPageSize = ref(10);
 const loadingOrders = ref(false);
 const customerIdForOrders = ref(0);
 
+const route = useRoute();
+
 const filterForm = reactive({
   keyword: '',
   sourceId: undefined as number | undefined,
@@ -260,7 +263,8 @@ function getSourceName(id: number): string {
 
 function getVipLabel(level: number): string {
   const v = vipConfigs.value.find(c => c.level === level);
-  return v ? v.label : '';
+  if (!v) return '';
+  return v.discount != null && v.discount < 100 ? `${v.name}（${v.discount}折）` : v.name;
 }
 
 function companionDays(createdAt: string): string {
@@ -269,7 +273,21 @@ function companionDays(createdAt: string): string {
 }
 
 onMounted(async () => {
+  if (route.query.keyword) {
+    filterForm.keyword = route.query.keyword as string;
+  }
   await Promise.all([loadList(), loadSources(), loadVipConfigs()]);
+});
+
+// 监听路由参数变化：点击侧栏 Tab 回到 /customers 时重置筛选条件
+watch(() => route.query.keyword, (newVal) => {
+  if (newVal) {
+    filterForm.keyword = newVal as string;
+  } else {
+    filterForm.keyword = '';
+  }
+  current.value = 1;
+  loadList();
 });
 
 async function loadSources() {

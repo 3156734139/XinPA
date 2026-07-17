@@ -21,7 +21,14 @@
 
           <!-- 费用明细 -->
           <el-descriptions-item label="费用明细" :span="2">
-            <span class="calc-chain">{{ order.unitPrice }}元/时 × {{ billableHours }}时<template v-if="order.settleRatio && order.settleRatio < 100"> (到手{{ order.settleRatio }}%)</template><template v-if="order.discountAmount > 0"> - 优惠{{ order.discountAmount }}元</template> = <strong>{{ order.finalAmount }}元</strong></span>
+            <div class="fee-row">
+              <span class="fee-amount">¥{{ order.finalAmount }}</span>
+              <span class="fee-detail">
+                （单价{{ order.unitPrice }}元/时 × 计费{{ billableHours }}时 到手{{ order.settleRatio }}%
+                <template v-if="vipLabel"> · {{ vipLabel }}</template>
+                <template v-if="order.discountAmount > 0"> · 优惠{{ order.discountAmount }}元</template>）
+              </span>
+            </div>
           </el-descriptions-item>
 
           <el-descriptions-item label="单价">{{ order.unitPrice }} 元/时</el-descriptions-item>
@@ -51,11 +58,13 @@ import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
 import { getOrderDetail } from '@/api/orders';
 import { getEnabledSources } from '@/api/orderSource';
+import { getVipConfigs } from '@/api/customers';
 import { getStatusLabel as statusText, getStatusType as statusType } from '@/types';
 
 const route = useRoute();
 const order = ref<any>(null);
 const sourceMap = ref<Record<number, string>>({});
+const vipConfigs = ref<any[]>([]);
 
 const billableHours = computed(() => {
   if (!order.value?.actualMinutes) return 0;
@@ -81,14 +90,29 @@ const actualMinutesText = computed(() => {
   return `${m}分钟`;
 });
 
+/** 根据订单的折扣信息反推VIP等级描述 */
+const vipLabel = computed(() => {
+  if (!order.value || !vipConfigs.value.length || !order.value.discountAmount || order.value.discountAmount <= 0) return '';
+  const subtotal = (order.value.unitPrice || 0) * billableHours.value;
+  const ratio = (order.value.settleRatio || 100) / 100;
+  const afterRatio = subtotal * ratio;
+  if (afterRatio <= 0) return '';
+  // 计算实际折扣率：discount = afterRatio * (100 - rate) / 100 → rate = 100 - discount * 100 / afterRatio
+  const rate = Math.round(100 - (order.value.discountAmount / afterRatio) * 100);
+  const matched = vipConfigs.value.find((v: any) => v.discount === rate);
+  return matched ? `${matched.name}打${matched.discount}折` : '';
+});
+
 onMounted(async () => {
-  const [res, srcRes] = await Promise.all([
+  const [res, srcRes, vipRes] = await Promise.all([
     getOrderDetail(Number(route.params.id)),
     getEnabledSources().catch(() => ({ data: [] })),
+    getVipConfigs().catch(() => ({ data: [] })),
   ]);
   order.value = res.data;
   const sources: any[] = srcRes.data || [];
   sources.forEach(s => { sourceMap.value[s.id] = s.name; });
+  vipConfigs.value = (vipRes as any)?.data || [];
 });
 
 function getSourceName(id: number | null | undefined): string {
@@ -104,5 +128,7 @@ function formatTime(dt: string): string {
 
 <style scoped>
 .header-bar { display: flex; justify-content: space-between; align-items: center; }
-.calc-chain { font-size: 14px; color: #5D4E6D; }
+.fee-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
+.fee-amount { color: #e8789a; font-size: 18px; font-weight: bold; flex-shrink: 0; }
+.fee-detail { color: #999; font-size: 13px; white-space: nowrap; }
 </style>

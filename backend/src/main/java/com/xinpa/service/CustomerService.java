@@ -63,4 +63,9 @@ public interface CustomerService {
      * 根据已完成订单重新计算客户的累计消费、下单次数、消费等级
      */
     void refreshCustomerStats(Long customerId);
+
+    /**
+     * 仅更新优惠等级（不触发全量统计重新计算）
+     */
+    void updateSpendLevel(Long id, int level);
 }

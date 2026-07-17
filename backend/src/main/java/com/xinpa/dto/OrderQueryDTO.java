@@ -21,6 +21,7 @@ public class OrderQueryDTO {
     private BigDecimal maxAmount;
     private Integer minMinutes;
     private Integer maxMinutes;
+    private String packageName;
     private long current = 1;
     private long size = 20;
 }

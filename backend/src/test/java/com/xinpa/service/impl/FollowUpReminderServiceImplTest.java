@@ -90,17 +90,13 @@ class FollowUpReminderServiceImplTest {
     class AutoGenerateTest {
 
         @Test
-        @DisplayName("下单后创建3天和7天回访")
-        void shouldCreateTwoReminders() {
+        @DisplayName("下单后创建3天回访")
+        void shouldCreateThreeDayReminder() {
             followUpReminderService.autoGenerate(100L, 200L, 1L);
 
-            verify(followUpReminderMapper, times(2)).insert(reminderCaptor.capture());
+            verify(followUpReminderMapper, times(1)).insert(reminderCaptor.capture());
 
-            var allReminders = reminderCaptor.getAllValues();
-            assertEquals(2, allReminders.size());
-
-            // 第一个：3天回访
-            FollowUpReminder r1 = allReminders.get(0);
+            FollowUpReminder r1 = reminderCaptor.getValue();
             assertEquals(100L, r1.getUserId().longValue());
             assertEquals(200L, r1.getCustomerId().longValue());
             assertEquals(1L, r1.getOrderId().longValue());
@@ -110,13 +106,6 @@ class FollowUpReminderServiceImplTest {
             LocalDateTime expectedR1 = LocalDateTime.now().plusDays(3);
             assertTrue(r1.getRemindTime().isAfter(expectedR1.minusMinutes(1)));
             assertTrue(r1.getRemindTime().isBefore(expectedR1.plusMinutes(1)));
-
-            // 第二个：7天回访
-            FollowUpReminder r2 = allReminders.get(1);
-            assertEquals(2, r2.getRemindType().intValue());
-            LocalDateTime expectedR2 = LocalDateTime.now().plusDays(7);
-            assertTrue(r2.getRemindTime().isAfter(expectedR2.minusMinutes(1)));
-            assertTrue(r2.getRemindTime().isBefore(expectedR2.plusMinutes(1)));
         }
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 客户管理接口
@@ -59,6 +60,26 @@ public class CustomerController {
         if (customer == null || !customer.getUserId().equals(UserContext.getUserId())) {
             return Result.fail("客户不存在");
         }
+        // 根据累计消费动态计算优惠等级（不依赖可能过期的 spendLevel 字段）
+        BigDecimal total = customer.getTotalSpend();
+        int level = 0;
+        String levelName = null;
+        Integer levelDiscount = null;
+        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        for (VipLevel vl : vipLevels) {
+            if (total != null && total.compareTo(vl.getThreshold()) >= 0 && vl.getLevel() > level) {
+                level = vl.getLevel();
+                levelName = vl.getName();
+                levelDiscount = vl.getDiscount();
+            }
+        }
+        if (!Objects.equals(customer.getSpendLevel(), level)) {
+            customer.setSpendLevel(level);
+            customerService.updateSpendLevel(id, level);
+        }
+        customer.setSpendLevel(level);
+        customer.setSpendLevelName(levelName);
+        customer.setSpendLevelDiscount(levelDiscount);
         return Result.ok(customer);
     }
 

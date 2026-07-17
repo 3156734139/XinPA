@@ -44,6 +44,7 @@ public class OrderController {
             @RequestParam(required = false) BigDecimal maxAmount,
             @RequestParam(required = false) Integer minMinutes,
             @RequestParam(required = false) Integer maxMinutes,
+            @RequestParam(required = false) String packageName,
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "20") long size) {
         OrderQueryDTO query = new OrderQueryDTO();
@@ -57,6 +58,7 @@ public class OrderController {
         query.setMaxAmount(maxAmount);
         query.setMinMinutes(minMinutes);
         query.setMaxMinutes(maxMinutes);
+        query.setPackageName(packageName);
         query.setCurrent(current);
         query.setSize(size);
         return Result.ok(PageResult.of(orderService.page(query)));

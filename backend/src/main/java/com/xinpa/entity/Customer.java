@@ -26,6 +26,12 @@ public class Customer {
     private Long sourceId;
     /** 优惠等级: 0无 1VIP1 2VIP2 3VIP3 4VIP4 5VIP5 6VIP6 */
     private Integer spendLevel;
+    /** VIP等级名称（非数据库字段） */
+    @TableField(exist = false)
+    private String spendLevelName;
+    /** VIP等级折扣（非数据库字段） */
+    @TableField(exist = false)
+    private Integer spendLevelDiscount;
     private String gamePreference;
     private String personality;
     private LocalDate birthday;
