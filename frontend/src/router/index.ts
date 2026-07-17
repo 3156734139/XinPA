@@ -45,12 +45,6 @@ const router = createRouter({
           meta: { title: '个人中心', icon: 'Setting' },
         },
         {
-          path: 'profile',
-          name: 'Profile',
-          component: () => import('@/views/user/profile/ProfilePage.vue'),
-          meta: { title: '人设主页', icon: 'User' },
-        },
-        {
           path: 'packages',
           name: 'Packages',
           component: () => import('@/views/user/packages/PackageList.vue'),
@@ -98,6 +92,12 @@ const router = createRouter({
           component: () => import('@/views/user/finance/FinancePage.vue'),
           meta: { title: '财务记账', icon: 'Money' },
         },
+        {
+          path: 'todos',
+          name: 'Todos',
+          component: () => import('@/views/user/tools/TodoManage.vue'),
+          meta: { title: '待办事项', icon: 'List' },
+        },
       ],
     },
     {
@@ -134,6 +134,18 @@ const router = createRouter({
           name: 'AdminPaymentMethods',
           component: () => import('@/views/admin/system/PaymentMethodManage.vue'),
           meta: { title: '支付方式管理', icon: 'Coin' },
+        },
+        {
+          path: 'package-types',
+          name: 'AdminPackageTypes',
+          component: () => import('@/views/admin/system/PackageTypeManage.vue'),
+          meta: { title: '套餐类型管理', icon: 'Coin' },
+        },
+        {
+          path: 'vip-levels',
+          name: 'AdminVipLevels',
+          component: () => import('@/views/admin/system/VipLevelManage.vue'),
+          meta: { title: '优惠等级配置', icon: 'TrendCharts' },
         },
         {
           path: 'announcements',

@@ -4,11 +4,17 @@ import com.xinpa.common.BusinessException;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
 import com.xinpa.entity.OrderSource;
+import com.xinpa.entity.PackageType;
+import com.xinpa.entity.PaymentMethod;
 import com.xinpa.entity.SysAdmin;
 import com.xinpa.entity.SysAnnouncement;
+import com.xinpa.entity.VipLevel;
 import com.xinpa.mapper.SysAdminMapper;
 import com.xinpa.service.OrderSourceService;
+import com.xinpa.service.PackageTypeService;
+import com.xinpa.service.PaymentMethodService;
 import com.xinpa.service.SysAnnouncementService;
+import com.xinpa.service.VipLevelService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,9 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 管理员 - 系统管理接口
- */
 @RestController
 @RequestMapping("/admin/system")
 @RequiredArgsConstructor
@@ -27,14 +30,11 @@ public class AdminSystemController {
     private final SysAdminMapper sysAdminMapper;
     private final SysAnnouncementService sysAnnouncementService;
     private final OrderSourceService orderSourceService;
-    private final com.xinpa.service.PaymentMethodService paymentMethodService;
+    private final PaymentMethodService paymentMethodService;
+    private final PackageTypeService packageTypeService;
+    private final VipLevelService vipLevelService;
     private final PasswordEncoder passwordEncoder;
 
-    // ==================== 管理员管理 ====================
-
-    /**
-     * 管理员列表
-     */
     @GetMapping("/admins")
     public Result<List<SysAdmin>> listAdmins() {
         List<SysAdmin> admins = sysAdminMapper.selectList(
@@ -43,63 +43,40 @@ public class AdminSystemController {
         return Result.ok(admins);
     }
 
-    /**
-     * 新增管理员
-     */
     @PostMapping("/admins")
     public Result<Void> createAdmin(@RequestBody SysAdmin admin) {
-        // 检查用户名是否存在
         SysAdmin exist = sysAdminMapper.selectOne(
                 new LambdaQueryWrapper<SysAdmin>().eq(SysAdmin::getUsername, admin.getUsername()));
-        if (exist != null) {
-            throw new BusinessException("用户名已存在");
-        }
+        if (exist != null) throw new BusinessException("用户名已存在");
         admin.setPassword(passwordEncoder.encode(admin.getPassword()));
-        if (admin.getRole() == null) {
-            admin.setRole("ADMIN");
-        }
+        if (admin.getRole() == null) admin.setRole("ADMIN");
         admin.setStatus(1);
         sysAdminMapper.insert(admin);
         return Result.ok();
     }
 
-    /**
-     * 更新管理员
-     */
     @PutMapping("/admins")
     public Result<Void> updateAdmin(@RequestBody SysAdmin admin) {
-        if (admin.getPassword() != null && !admin.getPassword().isEmpty()) {
+        if (admin.getPassword() != null && !admin.getPassword().isEmpty())
             admin.setPassword(passwordEncoder.encode(admin.getPassword()));
-        }
         sysAdminMapper.updateById(admin);
         return Result.ok();
     }
 
-    /**
-     * 禁用/启用管理员
-     */
     @PutMapping("/admins/{id}/status")
     public Result<Void> toggleAdminStatus(@PathVariable Long id, @RequestParam Integer status) {
-        SysAdmin admin = new SysAdmin();
-        admin.setId(id);
-        admin.setStatus(status);
-        sysAdminMapper.updateById(admin);
+        SysAdmin a = new SysAdmin(); a.setId(id); a.setStatus(status);
+        sysAdminMapper.updateById(a);
         return Result.ok();
     }
 
-    // ==================== 公告管理 ====================
+    // ==================== 公告 ====================
 
-    /**
-     * 公告列表
-     */
     @GetMapping("/announcements")
     public Result<List<SysAnnouncement>> listAnnouncements() {
         return Result.ok(sysAnnouncementService.listAll());
     }
 
-    /**
-     * 发布公告
-     */
     @PostMapping("/announcements")
     public Result<Void> createAnnouncement(@RequestBody SysAnnouncement announcement) {
         announcement.setAdminId(UserContext.getUserId());
@@ -107,127 +84,105 @@ public class AdminSystemController {
         return Result.ok();
     }
 
-    /**
-     * 公告上架/下架
-     */
     @PutMapping("/announcements/{id}/status")
     public Result<Void> toggleAnnouncement(@PathVariable Long id, @RequestParam Integer status) {
         sysAnnouncementService.updateStatus(id, status);
         return Result.ok();
     }
 
-    /**
-     * 删除公告
-     */
     @DeleteMapping("/announcements/{id}")
     public Result<Void> deleteAnnouncement(@PathVariable Long id) {
         sysAnnouncementService.delete(id);
         return Result.ok();
     }
 
-    // ==================== 订单来源管理 ====================
+    // ==================== 来源 ====================
 
-    /**
-     * 来源列表
-     */
     @GetMapping("/order-sources")
-    public Result<List<OrderSource>> listOrderSources() {
-        return Result.ok(orderSourceService.listAll());
-    }
+    public Result<List<OrderSource>> listOrderSources() { return Result.ok(orderSourceService.listAll()); }
 
-    /**
-     * 已启用的来源列表（供用户端下拉选单）
-     */
     @GetMapping("/order-sources/list-enabled")
-    public Result<List<OrderSource>> listEnabledSources() {
-        return Result.ok(orderSourceService.listEnabled());
-    }
+    public Result<List<OrderSource>> listEnabledSources() { return Result.ok(orderSourceService.listEnabled()); }
 
-    /**
-     * 新增来源
-     */
     @PostMapping("/order-sources")
-    public Result<Void> createOrderSource(@RequestBody OrderSource source) {
-        orderSourceService.create(source);
-        return Result.ok();
-    }
+    public Result<Void> createOrderSource(@RequestBody OrderSource s) { orderSourceService.create(s); return Result.ok(); }
 
-    /**
-     * 更新来源
-     */
     @PutMapping("/order-sources")
-    public Result<Void> updateOrderSource(@RequestBody OrderSource source) {
-        orderSourceService.update(source);
-        return Result.ok();
-    }
+    public Result<Void> updateOrderSource(@RequestBody OrderSource s) { orderSourceService.update(s); return Result.ok(); }
 
-    /**
-     * 删除来源
-     */
     @DeleteMapping("/order-sources/{id}")
-    public Result<Void> deleteOrderSource(@PathVariable Long id) {
-        orderSourceService.delete(id);
-        return Result.ok();
-    }
+    public Result<Void> deleteOrderSource(@PathVariable Long id) { orderSourceService.delete(id); return Result.ok(); }
 
-    /**
-     * 启用/禁用来源
-     */
     @PutMapping("/order-sources/{id}/status")
     public Result<Void> toggleOrderSourceStatus(@PathVariable Long id, @RequestParam Integer status) {
-        OrderSource source = new OrderSource();
-        source.setId(id);
-        source.setStatus(status);
-        orderSourceService.update(source);
+        OrderSource s = new OrderSource(); s.setId(id); s.setStatus(status);
+        orderSourceService.update(s);
         return Result.ok();
     }
 
-    // ==================== 支付方式管理 ====================
+    // ==================== 支付方式 ====================
 
-    /**
-     * 支付方式列表
-     */
     @GetMapping("/payment-methods")
-    public Result<List<com.xinpa.entity.PaymentMethod>> listPaymentMethods() {
-        return Result.ok(paymentMethodService.listAll());
-    }
+    public Result<List<PaymentMethod>> listPaymentMethods() { return Result.ok(paymentMethodService.listAll()); }
 
-    /**
-     * 新增支付方式
-     */
     @PostMapping("/payment-methods")
-    public Result<Void> createPaymentMethod(@RequestBody com.xinpa.entity.PaymentMethod paymentMethod) {
-        paymentMethodService.create(paymentMethod);
-        return Result.ok();
-    }
+    public Result<Void> createPaymentMethod(@RequestBody PaymentMethod pm) { paymentMethodService.create(pm); return Result.ok(); }
 
-    /**
-     * 更新支付方式
-     */
     @PutMapping("/payment-methods")
-    public Result<Void> updatePaymentMethod(@RequestBody com.xinpa.entity.PaymentMethod paymentMethod) {
-        paymentMethodService.update(paymentMethod);
-        return Result.ok();
-    }
+    public Result<Void> updatePaymentMethod(@RequestBody PaymentMethod pm) { paymentMethodService.update(pm); return Result.ok(); }
 
-    /**
-     * 删除支付方式
-     */
     @DeleteMapping("/payment-methods/{id}")
-    public Result<Void> deletePaymentMethod(@PathVariable Long id) {
-        paymentMethodService.delete(id);
-        return Result.ok();
-    }
+    public Result<Void> deletePaymentMethod(@PathVariable Long id) { paymentMethodService.delete(id); return Result.ok(); }
 
-    /**
-     * 启用/禁用支付方式
-     */
     @PutMapping("/payment-methods/{id}/status")
     public Result<Void> togglePaymentMethodStatus(@PathVariable Long id, @RequestParam Integer status) {
-        com.xinpa.entity.PaymentMethod pm = new com.xinpa.entity.PaymentMethod();
-        pm.setId(id);
-        pm.setStatus(status);
+        PaymentMethod pm = new PaymentMethod(); pm.setId(id); pm.setStatus(status);
         paymentMethodService.update(pm);
         return Result.ok();
     }
+
+    // ==================== 套餐类型 ====================
+
+    @GetMapping("/package-types")
+    public Result<List<PackageType>> listPackageTypes() { return Result.ok(packageTypeService.listAll()); }
+
+    @PostMapping("/package-types")
+    public Result<Void> createPackageType(@RequestBody PackageType pt) { packageTypeService.create(pt); return Result.ok(); }
+
+    @PutMapping("/package-types")
+    public Result<Void> updatePackageType(@RequestBody PackageType pt) { packageTypeService.update(pt); return Result.ok(); }
+
+    @DeleteMapping("/package-types/{id}")
+    public Result<Void> deletePackageType(@PathVariable Long id) { packageTypeService.delete(id); return Result.ok(); }
+
+    @PutMapping("/package-types/{id}/status")
+    public Result<Void> togglePackageTypeStatus(@PathVariable Long id, @RequestParam Integer status) {
+        PackageType pt = new PackageType(); pt.setId(id); pt.setStatus(status);
+        packageTypeService.update(pt);
+        return Result.ok();
+    }
+
+    // ==================== VIP等级 ====================
+
+    @GetMapping("/vip-levels")
+    public Result<List<VipLevel>> listVipLevels() { return Result.ok(vipLevelService.listAll()); }
+
+    @PostMapping("/vip-levels")
+    public Result<Void> createVipLevel(@RequestBody VipLevel vl) { vipLevelService.create(vl); return Result.ok(); }
+
+    @PutMapping("/vip-levels")
+    public Result<Void> updateVipLevel(@RequestBody VipLevel vl) { vipLevelService.update(vl); return Result.ok(); }
+
+    @DeleteMapping("/vip-levels/{id}")
+    public Result<Void> deleteVipLevel(@PathVariable Long id) { vipLevelService.delete(id); return Result.ok(); }
+
+    @PutMapping("/vip-levels/{id}/status")
+    public Result<Void> toggleVipLevelStatus(@PathVariable Long id, @RequestParam Integer status) {
+        VipLevel vl = new VipLevel(); vl.setId(id); vl.setStatus(status);
+        vipLevelService.update(vl);
+        return Result.ok();
+    }
+
+    @GetMapping("/vip-levels/list-enabled")
+    public Result<List<VipLevel>> listEnabledVipLevels() { return Result.ok(vipLevelService.listEnabled()); }
 }

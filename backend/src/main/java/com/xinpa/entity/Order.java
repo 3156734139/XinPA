@@ -1,6 +1,7 @@
 package com.xinpa.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ public class Order {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    @NotNull(message = "客户不能为空")
     private Long customerId;
     private String orderNo;
     /** 1pw店 2抖音 3小红书 4其他 */
@@ -26,10 +28,14 @@ public class Order {
     private String title;
     /** 1待接单 2进行中 3待结算 4已完结 5售后退款 */
     private Integer status;
+    @NotNull(message = "单价不能为空")
     private BigDecimal unitPrice;
     private BigDecimal plannedHours;
     private Integer actualMinutes;
     private Integer extraMinutes;
+    /** 客户名称（非数据库字段，查询时填充） */
+    @TableField(exist = false)
+    private String customerName;
     private BigDecimal totalAmount;
     private BigDecimal discountAmount;
     private BigDecimal finalAmount;
@@ -42,7 +48,9 @@ public class Order {
     private Integer isOvernight;
     private Integer isOffline;
     private Long couponId;
+    @NotNull(message = "开始时间不能为空")
     private LocalDateTime startTime;
+    @NotNull(message = "结束时间不能为空")
     private LocalDateTime endTime;
     private LocalDateTime settleTime;
     private LocalDateTime appointmentTime;

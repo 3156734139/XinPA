@@ -21,11 +21,13 @@ public class DataInitRunner implements CommandLineRunner {
     public void run(String... args) {
         SysAdmin admin = sysAdminMapper.selectOne(
                 new LambdaQueryWrapper<SysAdmin>().eq(SysAdmin::getUsername, "admin"));
-        if (admin != null) {
-            String newHash = passwordEncoder.encode("admin123");
-            log.info("更新管理员密码哈希: {}", newHash);
-            admin.setPassword(newHash);
-            sysAdminMapper.updateById(admin);
+        if (admin == null) {
+            SysAdmin newAdmin = new SysAdmin();
+            newAdmin.setUsername("admin");
+            newAdmin.setPassword(passwordEncoder.encode("admin123"));
+            newAdmin.setRole("SUPER_ADMIN");
+            sysAdminMapper.insert(newAdmin);
+            log.info("初始化管理员账号: admin");
         }
     }
 }

@@ -3,16 +3,18 @@ package com.xinpa.controller;
 import com.xinpa.common.PageResult;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
-import com.xinpa.entity.Coupon;
 import com.xinpa.entity.Customer;
 import com.xinpa.entity.FollowUpReminder;
-import com.xinpa.service.CouponService;
+import com.xinpa.entity.VipLevel;
 import com.xinpa.service.CustomerService;
 import com.xinpa.service.FollowUpReminderService;
+import com.xinpa.service.VipLevelService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 客户管理接口
@@ -23,8 +25,8 @@ import java.math.BigDecimal;
 public class CustomerController {
 
     private final CustomerService customerService;
-    private final CouponService couponService;
     private final FollowUpReminderService followUpReminderService;
+    private final VipLevelService vipLevelService;
 
     // ==================== 客户档案 ====================
 
@@ -33,8 +35,7 @@ public class CustomerController {
      */
     @GetMapping
     public Result<PageResult<Customer>> page(
-            @RequestParam(required = false) String nickname,
-            @RequestParam(required = false) String contact,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long sourceId,
             @RequestParam(required = false) Integer spendLevel,
             @RequestParam(required = false) BigDecimal minSpend,
@@ -45,7 +46,7 @@ public class CustomerController {
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "20") long size) {
         return Result.ok(PageResult.of(
-                customerService.page(UserContext.getUserId(), nickname, contact, sourceId,
+                customerService.page(UserContext.getUserId(), keyword, sourceId,
                         spendLevel, minSpend, maxSpend, minOrders, maxOrders, blacklist, current, size)));
     }
 
@@ -54,14 +55,18 @@ public class CustomerController {
      */
     @GetMapping("/{id}")
     public Result<Customer> detail(@PathVariable Long id) {
-        return Result.ok(customerService.getById(id));
+        Customer customer = customerService.getById(id);
+        if (customer == null || !customer.getUserId().equals(UserContext.getUserId())) {
+            return Result.fail("客户不存在");
+        }
+        return Result.ok(customer);
     }
 
     /**
      * 创建客户
      */
     @PostMapping
-    public Result<Void> create(@RequestBody Customer customer) {
+    public Result<Void> create(@Valid @RequestBody Customer customer) {
         customer.setUserId(UserContext.getUserId());
         customerService.create(customer);
         return Result.ok();
@@ -72,6 +77,7 @@ public class CustomerController {
      */
     @PutMapping
     public Result<Void> update(@RequestBody Customer customer) {
+        customer.setUserId(UserContext.getUserId());
         customerService.update(customer);
         return Result.ok();
     }
@@ -113,33 +119,14 @@ public class CustomerController {
         return Result.ok(customerService.listByUserId(UserContext.getUserId()));
     }
 
-    // ==================== 优惠券 ====================
+    // ==================== VIP 配置 ====================
 
     /**
-     * 优惠券列表
+     * 获取 VIP 等级配置列表（门槛和折扣）
      */
-    @GetMapping("/coupons")
-    public Result<?> coupons(@RequestParam(required = false) Long customerId) {
-        return Result.ok(couponService.listByUserId(UserContext.getUserId(), customerId));
-    }
-
-    /**
-     * 发放优惠券
-     */
-    @PostMapping("/coupons")
-    public Result<Void> createCoupon(@RequestBody Coupon coupon) {
-        coupon.setUserId(UserContext.getUserId());
-        couponService.create(coupon);
-        return Result.ok();
-    }
-
-    /**
-     * 作废优惠券
-     */
-    @DeleteMapping("/coupons/{id}")
-    public Result<Void> cancelCoupon(@PathVariable Long id) {
-        couponService.cancel(id, UserContext.getUserId());
-        return Result.ok();
+    @GetMapping("/vip-configs")
+    public Result<List<VipLevel>> vipConfigs() {
+        return Result.ok(vipLevelService.listEnabled());
     }
 
     // ==================== 回访提醒 ====================

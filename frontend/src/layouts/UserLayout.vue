@@ -18,10 +18,6 @@
           <el-icon><Monitor /></el-icon>
           <span>工作台</span>
         </el-menu-item>
-        <el-menu-item index="/profile">
-          <el-icon><User /></el-icon>
-          <span>人设主页</span>
-        </el-menu-item>
         <el-menu-item index="/packages">
           <el-icon><PriceTag /></el-icon>
           <span>价目套餐</span>
@@ -86,7 +82,11 @@
       </el-header>
       <el-main class="user-main">
         <div class="page-container">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <transition name="fade-slide" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
       </el-main>
     </el-container>
@@ -338,6 +338,7 @@ function handleCommand(command: string) {
   background: linear-gradient(180deg, #FFF5F7 0%, #FFF9FB 100%);
   padding: 24px;
   overflow-y: auto;
+  position: relative;
 }
 
 /* ===== 响应式 ===== */

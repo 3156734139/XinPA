@@ -1,40 +1,90 @@
 <template>
   <div class="order-list">
-    <el-card shadow="never">
+    <el-card shadow="never" class="order-card">
       <template #header>
         <div class="header-bar">
-          <span>♡ 订单管理</span>
-          <el-button type="primary" size="small" @click="openCreate">创建订单</el-button>
+          <span class="header-title">
+            <PixelSticker :size="18" style="margin-right:6px" />
+            订单管理
+          </span>
+          <el-button size="small" type="primary" @click="openCreate" class="btn-create-order">创建订单</el-button>
         </div>
       </template>
 
       <!-- 筛选 -->
-      <el-form :inline="true" class="filter-bar">
-        <el-form-item label="状态">
-          <el-select v-model="query.status" placeholder="全部" clearable @change="loadList">
-            <el-option :value="1" label="待接单" />
-            <el-option :value="2" label="进行中" />
-            <el-option :value="3" label="待结算" />
-            <el-option :value="4" label="已完结" />
-            <el-option :value="5" label="售后退款" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="来源">
-          <el-select v-model="query.source" placeholder="全部" clearable @change="loadList" style="width:140px">
-            <el-option
-              v-for="s in orderSources"
-              :key="s.id"
-              :value="s.id"
-              :label="s.name"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-input v-model="query.keyword" placeholder="搜索订单" clearable @change="loadList" />
-        </el-form-item>
+      <el-form :inline="true" class="filter-bar" style="display:flex;align-items:flex-start;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1;min-width:0">
+          <!-- 基础筛选项 -->
+          <el-form-item>
+            <el-input v-model="query.keyword" placeholder="搜索订单号/套餐名称" clearable style="width:200px" @keyup.enter="handleSearch" />
+          </el-form-item>
+          <el-form-item label="客户">
+            <el-select v-model="query.customerId" placeholder="全部" clearable filterable style="width:140px">
+              <el-option
+                v-for="c in customerList"
+                :key="c.id"
+                :value="c.id"
+                :label="`${c.nickname}${c.contact ? ' (' + c.contact + ')' : ''}`"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="来源">
+            <el-select v-model="query.source" placeholder="全部" clearable style="width:120px">
+              <el-option
+                v-for="s in orderSources"
+                :key="s.id"
+                :value="s.id"
+                :label="s.name"
+              />
+            </el-select>
+          </el-form-item>
+
+          <!-- 右侧：按钮区 -->
+          <div style="flex:1;min-width:120px" />
+          <el-form-item>
+            <el-button size="default" @click="showAdvanced = !showAdvanced">
+              <template v-if="showAdvanced">收起高级</template>
+              <template v-else>高级筛选</template>
+            </el-button>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </div>
+
+        <!-- 高级筛选区域 -->
+        <div v-show="showAdvanced" style="width:100%;margin-top:4px">
+          <el-divider style="margin:4px 0" />
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:4px 0">
+            <el-form-item label="创建时间">
+              <el-date-picker
+                v-model="query.dateRange"
+               
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+                style="width:230px"
+              />
+            </el-form-item>
+            <el-form-item label="金额(元)">
+              <div class="range-input">
+                <el-input-number v-model="query.minAmount" :min="0" :precision="2" :value-on-clear="null" controls-position="right" placeholder="最低" />
+                <span class="range-sep">~</span>
+                <el-input-number v-model="query.maxAmount" :min="0" :precision="2" :value-on-clear="null" controls-position="right" placeholder="最高" />
+              </div>
+            </el-form-item>
+            <el-form-item label="时长(分)">
+              <div class="range-input">
+                <el-input-number v-model="query.minMinutes" :min="0" :precision="0" :value-on-clear="null" controls-position="right" placeholder="最少" />
+                <span class="range-sep">~</span>
+                <el-input-number v-model="query.maxMinutes" :min="0" :precision="0" :value-on-clear="null" controls-position="right" placeholder="最多" />
+              </div>
+            </el-form-item>
+          </div>
+        </div>
       </el-form>
 
-      <el-table :data="list" stripe>
+      <el-table :data="list" stripe v-loading="loading">
         <el-table-column prop="orderNo" label="订单号" width="180" />
         <el-table-column label="套餐名称" min-width="130">
           <template #default="{ row }">{{ row.packageName || '-' }}</template>
@@ -42,14 +92,14 @@
         <el-table-column label="来源" width="90">
           <template #default="{ row }">{{ getSourceName(row.orderSource) }}</template>
         </el-table-column>
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="statusType(row.status)" :size="small" class="status-tag-pulse">{{ statusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="客户" width="120">
           <template #default="{ row }">
             {{ getCustomerName(row.customerId) || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="时长" width="80">
@@ -71,10 +121,10 @@
         <el-table-column label="创建时间" width="140">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
             <el-button size="small" link @click="$router.push(`/orders/${row.id}`)">详情</el-button>
-            <el-button size="small" link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button size="small" link @click="openEdit(row)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -91,8 +141,8 @@
 
     <!-- 创建/编辑订单弹窗 -->
     <el-dialog v-model="showDialog" :title="editId ? '编辑订单' : '♡ 创建订单'" width="520px">
-      <el-form :model="form" label-width="100px">
-        <el-form-item label="客户">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+        <el-form-item label="客户" prop="customerId">
           <el-select
             v-model="form.customerId"
             placeholder="请选择客户"
@@ -110,7 +160,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="来源">
+        <el-form-item label="来源" prop="orderSource">
           <el-select v-model="form.orderSource" style="width:100%">
             <el-option
               v-for="s in orderSources"
@@ -121,17 +171,17 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="日期">
+        <el-form-item label="日期" prop="selectedDate">
           <el-date-picker
-            v-model="selectedDate"
-            type="date"
+            v-model="form.selectedDate"
+           
             placeholder="选择日期"
             value-format="YYYY-MM-DD"
             style="width:100%"
           />
         </el-form-item>
 
-        <el-form-item label="时间段">
+        <el-form-item label="时间段" prop="timeRange">
           <div class="time-range-row">
             <el-time-picker
               v-model="startTimeVal"
@@ -157,7 +207,7 @@
           <span style="color:#e8789a;font-weight:bold">{{ billableDuration }}</span>
         </el-form-item>
 
-        <el-form-item label="支付方式">
+        <el-form-item label="支付方式" prop="paymentMethodId">
           <el-select v-model="form.paymentMethodId" clearable style="width:100%">
             <el-option
               v-for="m in paymentMethods"
@@ -185,18 +235,18 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="单价(元)">
+        <el-form-item label="单价(元)" prop="unitPrice">
           <el-input-number v-model="form.unitPrice" :precision="2" :min="0" style="width:100%" />
         </el-form-item>
 
-        <el-form-item label="到手比例">
+        <el-form-item label="到手比例" prop="settleRatio">
           <el-input-number v-model="form.settleRatio" :min="0" :max="100" :precision="0" style="width:100%">
           </el-input-number>
           <span style="margin-left:4px;color:#999">%</span>
         </el-form-item>
 
         <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="订单备注" />
+          <el-input v-model="form.remark" :rows="2" placeholder="订单备注（选填）" />
         </el-form-item>
         <el-form-item v-if="editingRow && (editingRow.actualMinutes || editingRow.extraMinutes)" label="累计计时">
           <span style="color:#666;font-size:13px">
@@ -224,12 +274,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import { getOrders, createOrder, updateOrder } from '@/api/orders';
 import { getCustomerList } from '@/api/customers';
 import { getPackages } from '@/api/profile';
 import { getEnabledSources } from '@/api/orderSource';
 import { getEnabledPaymentMethods } from '@/api/paymentMethod';
 import { formatDateTime, formatDuration } from '@/utils/format';
+import { getStatusLabel as statusLabel, getStatusType as statusType } from '@/types';
+import PixelSticker from '@/components/PixelSticker.vue';
 
 /* ===== 类型 ===== */
 interface CustomerItem { id: number; nickname: string; contact: string; sourceId?: number }
@@ -244,32 +297,55 @@ const showDialog = ref(false);
 const editId = ref<number | null>(null);
 const editingRow = ref<any>(null);
 const saving = ref(false);
+const showAdvanced = ref(false);
 const customerList = ref<CustomerItem[]>([]);
 const packageList = ref<PackageItem[]>([]);
 const orderSources = ref<SourceItem[]>([]);
 const paymentMethods = ref<PaymentMethodItem[]>([]);
 const paymentMethodMap = ref<Record<number, string>>({});
-const selectedDate = ref<string | null>(null);
 const startTimeVal = ref<string | null>(null);
 const endTimeVal = ref<string | null>(null);
+const formRef = ref<FormInstance>();
 
 const query = reactive({
-  status: undefined as number | undefined,
   source: undefined as number | undefined,
+  customerId: undefined as number | undefined,
   keyword: '',
+  dateRange: null as string[] | null,
+  minAmount: undefined as number | undefined,
+  maxAmount: undefined as number | undefined,
+  minMinutes: undefined as number | undefined,
+  maxMinutes: undefined as number | undefined,
   current: 1,
   size: 20,
 });
 
 const form = reactive({
-  orderSource: 1,
+  orderSource: undefined as number | undefined,
   paymentMethodId: undefined as number | undefined,
   packageId: undefined as number | undefined,
   unitPrice: 0,
   settleRatio: 100,
   customerId: undefined as number | undefined,
+  selectedDate: null as string | null,
   remark: '',
 });
+
+const formRules: FormRules = {
+  customerId: [{ required: true, message: '请选择客户', trigger: 'change' }],
+  orderSource: [{ required: true, message: '请选择来源', trigger: 'change' }],
+  selectedDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
+  timeRange: [{ validator: (_rule: any, _value: any, callback: any) => {
+    if (!startTimeVal.value || !endTimeVal.value) {
+      callback(new Error('请选择开始和结束时间'));
+    } else {
+      callback();
+    }
+  }, trigger: 'change' }],
+  paymentMethodId: [{ required: true, message: '请选择支付方式', trigger: 'change' }],
+  unitPrice: [{ required: true, message: '请输入单价', trigger: 'blur' }],
+  settleRatio: [{ required: true, message: '请输入到手比例', trigger: 'blur' }],
+};
 
 /** 计费规则：超过15min算0.5h，超过45min算1h */
 function calcBillableHours(minutes: number): number {
@@ -283,11 +359,11 @@ function calcBillableHours(minutes: number): number {
 
 /** 实际分钟数（支持跨零点） */
 const actualMinutes = computed(() => {
-  if (!selectedDate.value || !startTimeVal.value || !endTimeVal.value) return 0;
+  if (!form.selectedDate || !startTimeVal.value || !endTimeVal.value) return 0;
   const [sh, sm] = startTimeVal.value.split(':').map(Number);
   const [eh, em] = endTimeVal.value.split(':').map(Number);
   let diff = (eh * 60 + em) - (sh * 60 + sm);
-  if (diff < 0) diff += 1440; // 跨零点加24h
+  if (diff < 0) diff += 1440;
   return diff;
 });
 
@@ -302,7 +378,7 @@ const actualDuration = computed(() => {
   return `${h}h${r}min`;
 });
 
-/** 计费时长（按规则取整后） */
+/** 计费时长 */
 const billableDuration = computed(() => {
   const h = calcBillableHours(actualMinutes.value);
   if (h === 0) return '-';
@@ -313,7 +389,7 @@ const billableDuration = computed(() => {
   return `${hours}h${mins}min`;
 });
 
-/** 原始费用（不计到手比例） */
+/** 原始费用 */
 const rawAmount = computed(() => {
   if (actualMinutes.value <= 0) return 0;
   return calcBillableHours(actualMinutes.value) * (form.unitPrice || 0);
@@ -326,27 +402,26 @@ const estimatedAmount = computed(() => {
   return rawAmount.value * ratio;
 });
 
-/* ===== 支付方式名映射 ===== */
 function getPaymentMethodName(id: number | undefined | null): string {
   if (!id) return '';
   return paymentMethodMap.value[id] || '';
 }
 
-/* ===== 客户名映射 ===== */
 const customerMap = ref<Record<number, string>>({});
 function getCustomerName(id: number | undefined | null): string {
   if (!id) return '';
   return customerMap.value[id] || `ID:${id}`;
 }
 
-/* ===== 来源名映射 ===== */
 const sourceMap = ref<Record<number, string>>({});
 function getSourceName(id: number | undefined | null): string {
   if (!id) return '-';
   return sourceMap.value[id] || `ID:${id}`;
 }
 
-/* ===== 客户选择 → 自动锁定来源 ===== */
+/* ===== 数据加载 ===== */
+const loading = ref(false);
+
 function onCustomerChange(val: number | undefined) {
   if (!val) return;
   const c = customerList.value.find(c => c.id === val);
@@ -355,7 +430,6 @@ function onCustomerChange(val: number | undefined) {
   }
 }
 
-/* ===== 套餐选择 ===== */
 function onPackageChange(val: number | undefined) {
   if (!val) return;
   const pkg = packageList.value.find(p => p.id === val);
@@ -364,15 +438,52 @@ function onPackageChange(val: number | undefined) {
   }
 }
 
-/* ===== 加载数据 ===== */
 onMounted(async () => {
   await Promise.all([loadList(), loadCustomers(), loadPackages(), loadSources(), loadPaymentMethods()]);
 });
 
 async function loadList() {
-  const res: any = await getOrders(query);
-  list.value = res.data?.records || [];
-  total.value = res.data?.total || 0;
+  loading.value = true;
+  try {
+    const params: any = {
+      source: query.source,
+      customerId: query.customerId,
+      keyword: query.keyword || undefined,
+      current: query.current,
+      size: query.size,
+    };
+    if (query.minAmount != null) params.minAmount = query.minAmount;
+    if (query.maxAmount != null) params.maxAmount = query.maxAmount;
+    if (query.minMinutes != null) params.minMinutes = query.minMinutes;
+    if (query.maxMinutes != null) params.maxMinutes = query.maxMinutes;
+    if (query.dateRange) {
+      params.startDate = query.dateRange[0];
+      params.endDate = query.dateRange[1];
+    }
+    const res: any = await getOrders(params);
+    list.value = res.data?.records || [];
+    total.value = res.data?.total || 0;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function handleSearch() {
+  query.current = 1;
+  loadList();
+}
+
+function handleReset() {
+  query.source = undefined;
+  query.customerId = undefined;
+  query.keyword = '';
+  query.dateRange = null;
+  query.minAmount = undefined;
+  query.maxAmount = undefined;
+  query.minMinutes = undefined;
+  query.maxMinutes = undefined;
+  query.current = 1;
+  loadList();
 }
 
 async function loadCustomers() {
@@ -407,25 +518,17 @@ async function loadPaymentMethods() {
   } catch { /* ignore */ }
 }
 
-/* ===== 操作 ===== */
-function statusText(s: number) {
-  return ['', '待接单', '进行中', '待结算', '已完结', '售后退款'][s] || '';
-}
-function statusType(s: number) {
-  return ['', 'info', 'primary', 'warning', 'success', 'danger'][s] || '';
-}
-
 function resetForm() {
   editId.value = null;
   editingRow.value = null;
-  form.orderSource = orderSources.value.length > 0 ? orderSources.value[0].id : 1;
+  form.orderSource = undefined;
   form.paymentMethodId = undefined;
   form.packageId = undefined;
   form.unitPrice = 0;
   form.settleRatio = 100;
   form.customerId = undefined;
+  form.selectedDate = null;
   form.remark = '';
-  selectedDate.value = null;
   startTimeVal.value = null;
   endTimeVal.value = null;
 }
@@ -438,7 +541,7 @@ function openCreate() {
 function openEdit(row: any) {
   editId.value = row.id;
   editingRow.value = row;
-  form.orderSource = row.orderSource || (orderSources.value.length > 0 ? orderSources.value[0].id : 1);
+  form.orderSource = row.orderSource || undefined;
   form.paymentMethodId = row.paymentMethodId || undefined;
   form.packageId = row.packageId || undefined;
   form.unitPrice = row.unitPrice || 0;
@@ -446,13 +549,12 @@ function openEdit(row: any) {
   form.customerId = row.customerId || undefined;
   form.remark = row.remark || '';
 
-  // 回填日期和时分
   if (row.startTime) {
     const dt = new Date(row.startTime);
-    selectedDate.value = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
+    form.selectedDate = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
     startTimeVal.value = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}:${dt.getSeconds().toString().padStart(2, '0')}`;
   } else {
-    selectedDate.value = null;
+    form.selectedDate = null;
     startTimeVal.value = null;
   }
   if (row.endTime) {
@@ -465,22 +567,24 @@ function openEdit(row: any) {
 }
 
 async function handleSave() {
+  if (!formRef.value) return;
+  await formRef.value.validate();
+
   let startTime: string | undefined;
   let endTime: string | undefined;
-  if (selectedDate.value && startTimeVal.value && endTimeVal.value) {
+  if (form.selectedDate && startTimeVal.value && endTimeVal.value) {
     const [sh, sm] = startTimeVal.value.split(':').map(Number);
     const [eh, em] = endTimeVal.value.split(':').map(Number);
     const isOvernight = eh * 60 + em < sh * 60 + sm;
 
-    startTime = `${selectedDate.value}T${startTimeVal.value}`;
+    startTime = `${form.selectedDate}T${startTimeVal.value}`;
     if (isOvernight) {
-      // 跨零点，结束日期加1天
-      const d = new Date(selectedDate.value);
+      const d = new Date(form.selectedDate);
       d.setDate(d.getDate() + 1);
       const nextDate = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
       endTime = `${nextDate}T${endTimeVal.value}`;
     } else {
-      endTime = `${selectedDate.value}T${endTimeVal.value}`;
+      endTime = `${form.selectedDate}T${endTimeVal.value}`;
     }
   }
 
@@ -518,12 +622,46 @@ async function handleSave() {
 
 <style scoped>
 .header-bar { display: flex; justify-content: space-between; align-items: center; }
+.header-title { font-size: 15px; font-weight: 600; color: #5D4E6D; }
+
+/* 卡片入场动画 */
+.order-card {
+  animation: slideUp 0.4s ease both;
+}
+
+/* 创建订单按钮 */
+.btn-create-order {
+  transition: all 0.3s ease !important;
+}
+.btn-create-order:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 20px rgba(232, 130, 154, 0.2) !important;
+}
+
 .filter-bar { margin-bottom: 16px; }
+.filter-bar .el-form-item { margin-bottom: 4px; }
 .mt-16 { margin-top: 16px; }
 .time-range-row { display: flex; align-items: center; width: 100%; gap: 0; }
 .time-sep { margin: 0 8px; color: #999; flex-shrink: 0; }
+.range-input { display: flex; align-items: center; gap: 4px; }
+.range-input .el-input-number { width: 110px; }
+.range-sep { color: #999; flex-shrink: 0; }
 .summary-row { text-align: right; padding: 8px 0; border-top: 1px solid #eee; width: 100%; }
 .summary-label { color: #999; font-size: 13px; margin-right: 8px; }
 .summary-amount { color: #e8789a; font-size: 16px; font-weight: bold; }
 .summary-parenthesis { color: #999; font-size: 13px; margin-left: 4px; }
+
+/* 表格行悬停增强 */
+:deep(.el-table__body tr) {
+  transition: all 0.25s ease;
+}
+:deep(.el-table__body tr:hover) {
+  transform: scale(1.002);
+  box-shadow: 0 2px 12px rgba(232, 130, 154, 0.06);
+}
+
+/* 状态标签脉冲动画 */
+.status-tag-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
 </style>

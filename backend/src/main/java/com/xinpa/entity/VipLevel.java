@@ -3,25 +3,27 @@ package com.xinpa.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 用户游戏配置 - 每个游戏独立的人设介绍
+ * VIP等级配置（管理员维护）
  */
 @Data
-@TableName("user_game_config")
-public class UserGameConfig {
+@TableName("vip_level")
+public class VipLevel {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long userId;
-    private String gameName;
-    private String intro;
-    private String openingLine;
-    private String tags;
-    private String rankInfo;
-    private String positionInfo;
+    private Integer level;
+    private String name;
+    private BigDecimal threshold;
+    private Integer discount;
+    /** 等级福利描述 */
+    private String benefits;
     private Integer sortOrder;
+    /** 0禁用 1启用 */
+    private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @TableLogic

@@ -38,4 +38,13 @@ public interface OrderMapper extends BaseMapper<Order> {
             "FROM `order` WHERE user_id = #{userId} AND package_id IS NOT NULL AND deleted = 0 " +
             "GROUP BY package_id")
     List<Map<String, Object>> selectPackageStats(@Param("userId") Long userId);
+
+    /** 用户今日订单数 */
+    @Select("SELECT COUNT(*) FROM `order` WHERE user_id = #{userId} AND deleted = 0 AND DATE(created_at) = #{date}")
+    long countTodayByUserId(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    /** 客户订单统计（已完成订单） */
+    @Select("SELECT COUNT(*) as order_count, COALESCE(SUM(final_amount), 0) as total_spend " +
+            "FROM `order` WHERE customer_id = #{customerId} AND status = 4 AND deleted = 0")
+    Map<String, Object> selectCustomerStats(@Param("customerId") Long customerId);
 }

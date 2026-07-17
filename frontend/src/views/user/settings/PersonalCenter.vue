@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="page-header mb-24">
       <div>
-        <h2>个人中心</h2>
+        <h2><PixelSticker :size="18" /> 个人中心</h2>
         <p>管理你的账号信息和资料</p>
       </div>
     </div>
@@ -29,7 +29,7 @@
             </div>
             <input
               ref="fileInputRef"
-              type="file"
+             
               accept="image/*"
               style="display:none"
               @change="handleFileChange"
@@ -43,7 +43,7 @@
             <div class="info-divider"></div>
             <div class="info-row">
               <span class="info-label">会员类型</span>
-              <el-tag :type="userStore.userInfo?.memberType === 1 ? 'warning' : 'info'" size="small" effect="plain" round>
+              <el-tag :size="small" effect="plain" round>
                 {{ userStore.userInfo?.memberType === 1 ? '付费会员' : '免费用户' }}
               </el-tag>
             </div>
@@ -123,7 +123,7 @@
                 <el-form-item label="当前密码" prop="oldPassword">
                   <el-input
                     v-model="passwordForm.oldPassword"
-                    type="password"
+                   
                     placeholder="输入当前密码"
                     show-password
                   />
@@ -133,7 +133,7 @@
                 <el-form-item label="新密码" prop="newPassword">
                   <el-input
                     v-model="passwordForm.newPassword"
-                    type="password"
+                   
                     placeholder="至少6位"
                     show-password
                   />
@@ -143,7 +143,7 @@
                 <el-form-item label="确认新密码" prop="confirmPassword">
                   <el-input
                     v-model="passwordForm.confirmPassword"
-                    type="password"
+                   
                     placeholder="再次输入新密码"
                     show-password
                   />
@@ -169,6 +169,7 @@ import { useUserStore } from '@/store/user';
 import { getUserInfo, updateUserInfo, changePassword, uploadAvatar } from '@/api/auth';
 import { Camera, Edit, Lock } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
+import PixelSticker from '@/components/PixelSticker.vue';
 
 const userStore = useUserStore();
 const fileInputRef = ref<HTMLInputElement>();

@@ -93,11 +93,6 @@ body {
 .el-button {
   border-radius: 12px;
   font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.el-button:hover {
-  transform: translateY(-1px);
 }
 
 .el-button--primary {
@@ -500,4 +495,20 @@ body {
     background: #2D2430;
     color: #E8D8E0;
   }
+}
+
+/* ===== 页面过渡动画 ===== */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }

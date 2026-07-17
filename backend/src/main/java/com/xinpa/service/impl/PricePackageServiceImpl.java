@@ -25,7 +25,7 @@ public class PricePackageServiceImpl implements PricePackageService {
                 new LambdaQueryWrapper<PricePackage>()
                         .eq(PricePackage::getUserId, userId)
                         .eq(PricePackage::getDeleted, 0)
-                        .orderByAsc(PricePackage::getSortOrder));
+                        .orderByAsc(PricePackage::getName));
     }
 
     @Override
@@ -40,6 +40,11 @@ public class PricePackageServiceImpl implements PricePackageService {
 
     @Override
     public void update(PricePackage pricePackage) {
+        PricePackage existing = pricePackageMapper.selectById(pricePackage.getId());
+        if (existing == null) throw new BusinessException("套餐不存在");
+        if (!existing.getUserId().equals(pricePackage.getUserId())) {
+            throw new BusinessException("无权操作该套餐");
+        }
         pricePackageMapper.updateById(pricePackage);
     }
 

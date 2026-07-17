@@ -1,13 +1,23 @@
+-- ============================================================
 -- 陪玩星助手 数据库初始化脚本
 -- MySQL 8.0+
+-- 用法: mysql -h 127.0.0.1 -P 3307 -u root -proot < init.sql
+-- ============================================================
 
 CREATE DATABASE IF NOT EXISTS xinpa DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE xinpa;
 
+-- ==================== 清理无用表 ====================
+DROP TABLE IF EXISTS ai_call_log;
+DROP TABLE IF EXISTS copywriting;
+DROP TABLE IF EXISTS coupon;
+DROP TABLE IF EXISTS order_timer_log;
+DROP TABLE IF EXISTS quick_phrase;
+DROP TABLE IF EXISTS sys_config;
+
 -- ==================== 用户与权限 ====================
 
--- 陪玩用户表
-CREATE TABLE IF NOT EXISTS sys_user (
+CREATE TABLE sys_user (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
     username        VARCHAR(64)  NOT NULL UNIQUE COMMENT '登录用户名',
     password        VARCHAR(128) NOT NULL COMMENT 'BCrypt加密密码',
@@ -26,8 +36,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     INDEX idx_status (status)
 ) ENGINE=InnoDB COMMENT='陪玩用户表';
 
--- 管理员表
-CREATE TABLE IF NOT EXISTS sys_admin (
+CREATE TABLE sys_admin (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     username        VARCHAR(64)  NOT NULL UNIQUE COMMENT '管理员用户名',
     password        VARCHAR(128) NOT NULL COMMENT 'BCrypt加密密码',
@@ -40,8 +49,7 @@ CREATE TABLE IF NOT EXISTS sys_admin (
     deleted         TINYINT      NOT NULL DEFAULT 0
 ) ENGINE=InnoDB COMMENT='管理员表';
 
--- 全平台公告
-CREATE TABLE IF NOT EXISTS sys_announcement (
+CREATE TABLE sys_announcement (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
     title       VARCHAR(256) NOT NULL COMMENT '公告标题',
     content     TEXT         NOT NULL COMMENT '公告内容',
@@ -54,8 +62,7 @@ CREATE TABLE IF NOT EXISTS sys_announcement (
 
 -- ==================== 人设主页 ====================
 
--- 个人人设主页
-CREATE TABLE IF NOT EXISTS user_profile (
+CREATE TABLE user_profile (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL UNIQUE COMMENT '用户ID',
     template_type   TINYINT      NOT NULL DEFAULT 1 COMMENT '模板: 1游戏陪玩 2声优树洞 3线下陪伴',
@@ -70,8 +77,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB COMMENT='个人人设主页';
 
--- 价目套餐
-CREATE TABLE IF NOT EXISTS price_package (
+CREATE TABLE price_package (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '用户ID',
     name            VARCHAR(128) NOT NULL COMMENT '套餐名称',
@@ -88,8 +94,7 @@ CREATE TABLE IF NOT EXISTS price_package (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB COMMENT='价目套餐';
 
--- 素材库
-CREATE TABLE IF NOT EXISTS material (
+CREATE TABLE material (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '用户ID',
     name            VARCHAR(256) NOT NULL COMMENT '素材名称',
@@ -102,16 +107,34 @@ CREATE TABLE IF NOT EXISTS material (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB COMMENT='素材库';
 
+-- ==================== 游戏配置 ====================
+
+CREATE TABLE user_game_config (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id         BIGINT       NOT NULL COMMENT '用户ID',
+    game_name       VARCHAR(128) NOT NULL COMMENT '游戏名称',
+    intro           TEXT         COMMENT '游戏介绍',
+    opening_line    VARCHAR(512) DEFAULT NULL COMMENT '开场白',
+    tags            VARCHAR(512) DEFAULT NULL COMMENT '标签逗号分隔',
+    rank_info       VARCHAR(256) DEFAULT NULL COMMENT '段位',
+    position_info   VARCHAR(256) DEFAULT NULL COMMENT '擅长位置',
+    sort_order      INT          DEFAULT 0 COMMENT '排序',
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         TINYINT      NOT NULL DEFAULT 0,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB COMMENT='用户游戏配置';
+
 -- ==================== 客户管理 ====================
 
--- 客户档案
-CREATE TABLE IF NOT EXISTS customer (
+CREATE TABLE customer (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '所属陪玩用户ID',
     nickname        VARCHAR(128) NOT NULL COMMENT '客户昵称',
     contact         VARCHAR(128) DEFAULT NULL COMMENT '微信/QQ等联系方式',
-    source          VARCHAR(64)  DEFAULT NULL COMMENT '来源渠道',
-    spend_level     TINYINT      DEFAULT 1 COMMENT '消费水平: 1低 2中 3高',
+    source          VARCHAR(64)  DEFAULT NULL COMMENT '来源渠道(旧字段)',
+    source_id       BIGINT       DEFAULT NULL COMMENT '关联order_source.id',
+    spend_level     TINYINT      DEFAULT 0 COMMENT '优惠等级: 0无 1VIP1 2VIP2 ...',
     game_preference JSON         COMMENT '游戏偏好',
     personality     VARCHAR(512) DEFAULT NULL COMMENT '性格/雷点备注',
     birthday        DATE         DEFAULT NULL COMMENT '生日',
@@ -129,25 +152,7 @@ CREATE TABLE IF NOT EXISTS customer (
     INDEX idx_blacklist (user_id, is_blacklist)
 ) ENGINE=InnoDB COMMENT='客户档案';
 
--- 优惠券
-CREATE TABLE IF NOT EXISTS coupon (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '所属陪玩用户ID',
-    customer_id     BIGINT       DEFAULT NULL COMMENT '定向客户ID，NULL为通用',
-    name            VARCHAR(128) NOT NULL COMMENT '券名称',
-    coupon_type     TINYINT      NOT NULL COMMENT '类型: 1时长折扣 2免费体验',
-    discount_value  DECIMAL(5,2) DEFAULT NULL COMMENT '折扣值(0.8=8折)',
-    free_hours      DECIMAL(5,2) DEFAULT NULL COMMENT '免费时长(小时)',
-    min_amount      DECIMAL(10,2) DEFAULT 0 COMMENT '最低消费门槛',
-    expire_time     DATETIME     DEFAULT NULL COMMENT '过期时间',
-    status          TINYINT      NOT NULL DEFAULT 1 COMMENT '0已用 1未用 2过期',
-    used_order_id   BIGINT       DEFAULT NULL COMMENT '使用的订单ID',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_customer (user_id, customer_id)
-) ENGINE=InnoDB COMMENT='优惠券';
-
--- 回访提醒
-CREATE TABLE IF NOT EXISTS follow_up_reminder (
+CREATE TABLE follow_up_reminder (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '陪玩用户ID',
     customer_id     BIGINT       NOT NULL COMMENT '客户ID',
@@ -160,30 +165,16 @@ CREATE TABLE IF NOT EXISTS follow_up_reminder (
     INDEX idx_user_remind (user_id, remind_time)
 ) ENGINE=InnoDB COMMENT='回访提醒';
 
--- 快捷文案库
-CREATE TABLE IF NOT EXISTS copywriting (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '用户ID',
-    category        VARCHAR(64)  NOT NULL COMMENT '分类: 开场/安抚/砍价/活动等',
-    title           VARCHAR(128) NOT NULL COMMENT '标题',
-    content         TEXT         NOT NULL COMMENT '文案内容',
-    is_ai_generated TINYINT      DEFAULT 0 COMMENT '是否AI生成',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted         TINYINT      NOT NULL DEFAULT 0,
-    INDEX idx_user_category (user_id, category)
-) ENGINE=InnoDB COMMENT='快捷文案库';
-
 -- ==================== 订单管理 ====================
 
--- 订单表
-CREATE TABLE IF NOT EXISTS `order` (
+CREATE TABLE `order` (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '陪玩用户ID',
     customer_id     BIGINT       DEFAULT NULL COMMENT '客户ID',
     order_no        VARCHAR(32)  NOT NULL UNIQUE COMMENT '订单编号',
-    order_source    TINYINT      NOT NULL COMMENT '来源: 1pw店 2抖音 3小红书 4其他',
+    order_source    TINYINT      DEFAULT NULL COMMENT '来源: 引用order_source.id',
     package_id      BIGINT       DEFAULT NULL COMMENT '关联套餐ID',
+    package_name    VARCHAR(256) DEFAULT NULL COMMENT '套餐名称',
     title           VARCHAR(256) NOT NULL COMMENT '订单标题',
     status          TINYINT      NOT NULL DEFAULT 1 COMMENT '1待接单 2进行中 3待结算 4已完结 5售后退款',
     unit_price      DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '单价',
@@ -193,9 +184,11 @@ CREATE TABLE IF NOT EXISTS `order` (
     total_amount    DECIMAL(10,2) DEFAULT 0 COMMENT '订单总金额',
     discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠金额',
     final_amount    DECIMAL(10,2) DEFAULT 0 COMMENT '实付金额',
+    payment_method  VARCHAR(32)  DEFAULT NULL COMMENT '支付方式(旧字段)',
+    payment_method_id BIGINT     DEFAULT NULL COMMENT '关联payment_method.id',
+    settle_ratio    DECIMAL(5,2)  DEFAULT 100.00 COMMENT '到手比例(100=100%)',
     is_overnight    TINYINT      DEFAULT 0 COMMENT '是否通宵单',
     is_offline      TINYINT      DEFAULT 0 COMMENT '是否线下单',
-    coupon_id       BIGINT       DEFAULT NULL COMMENT '使用的优惠券',
     start_time      DATETIME     DEFAULT NULL COMMENT '开始计时',
     end_time        DATETIME     DEFAULT NULL COMMENT '结束计时',
     settle_time     DATETIME     DEFAULT NULL COMMENT '结算时间',
@@ -209,19 +202,7 @@ CREATE TABLE IF NOT EXISTS `order` (
     INDEX idx_appointment (user_id, appointment_time)
 ) ENGINE=InnoDB COMMENT='订单表';
 
--- 订单计时记录
-CREATE TABLE IF NOT EXISTS order_timer_log (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_id        BIGINT       NOT NULL COMMENT '订单ID',
-    user_id         BIGINT       NOT NULL COMMENT '用户ID',
-    action          TINYINT      NOT NULL COMMENT '动作: 1开始 2暂停 3继续 4结束 5补时',
-    minutes         INT          DEFAULT 0 COMMENT '本次计时分钟数',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_order_id (order_id)
-) ENGINE=InnoDB COMMENT='订单计时记录';
-
--- 预约日历
-CREATE TABLE IF NOT EXISTS appointment (
+CREATE TABLE appointment (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '用户ID',
     order_id        BIGINT       DEFAULT NULL COMMENT '关联订单ID',
@@ -241,8 +222,7 @@ CREATE TABLE IF NOT EXISTS appointment (
 
 -- ==================== 财务管理 ====================
 
--- 财务流水
-CREATE TABLE IF NOT EXISTS finance_record (
+CREATE TABLE finance_record (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '用户ID',
     order_id        BIGINT       DEFAULT NULL COMMENT '关联订单ID',
@@ -259,31 +239,19 @@ CREATE TABLE IF NOT EXISTS finance_record (
     INDEX idx_type (user_id, record_type)
 ) ENGINE=InnoDB COMMENT='财务流水';
 
--- 用户财务设置
-CREATE TABLE IF NOT EXISTS user_finance_setting (
+CREATE TABLE user_finance_setting (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL UNIQUE COMMENT '用户ID',
-    monthly_target  DECIMAL(12,2) DEFAULT 0 COMMENT '月度收入目标',
-    withdraw_fee_rate DECIMAL(5,4) DEFAULT 0.006 COMMENT '提现手续费率',
+    monthly_target         DECIMAL(12,2) DEFAULT 0 COMMENT '月度收入目标',
+    monthly_expense_target DECIMAL(12,2) DEFAULT 0 COMMENT '月度支出预算',
+    withdraw_fee_rate      DECIMAL(5,4) DEFAULT 0.006 COMMENT '提现手续费率',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB COMMENT='用户财务设置';
 
 -- ==================== 日程工具 ====================
 
--- 快捷短语
-CREATE TABLE IF NOT EXISTS quick_phrase (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '用户ID',
-    phrase          VARCHAR(512) NOT NULL COMMENT '短语内容',
-    sort_order      INT          DEFAULT 0,
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted         TINYINT      NOT NULL DEFAULT 0,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='快捷短语';
-
--- 待办看板
-CREATE TABLE IF NOT EXISTS todo_item (
+CREATE TABLE todo_item (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL COMMENT '用户ID',
     title           VARCHAR(256) NOT NULL COMMENT '待办标题',
@@ -296,42 +264,9 @@ CREATE TABLE IF NOT EXISTS todo_item (
     INDEX idx_user_status (user_id, status)
 ) ENGINE=InnoDB COMMENT='待办看板';
 
--- ==================== 初始化数据 ====================
+-- ==================== 字典表 ====================
 
--- 默认超级管理员 (密码: admin123)
-INSERT INTO sys_admin (username, password, real_name, role, status) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '超级管理员', 'SUPER_ADMIN', 1);
-
--- 演示陪玩用户 (密码: user123)
-INSERT INTO sys_user (username, password, nickname, member_type, status) VALUES
-('demo', '$2a$10$8.UnVuG9HHgfftdD04OK0.zJx/qx3nYpBWn0BGB8oIvKOSSpjRqW.', '演示陪玩', 0, 1);
-
-INSERT INTO user_profile (user_id, template_type, intro, order_status) VALUES
-(1, 1, '专业游戏陪玩，多赛季王者，声音甜美~', 1);
-
-INSERT INTO user_finance_setting (user_id, monthly_target) VALUES (1, 10000.00);
-
--- ==================== 2.0 新增: 游戏配置 ====================
-
-CREATE TABLE IF NOT EXISTS user_game_config (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '用户ID',
-    game_name       VARCHAR(128) NOT NULL COMMENT '游戏名称',
-    intro           TEXT         COMMENT '游戏介绍',
-    opening_line    VARCHAR(512) DEFAULT NULL COMMENT '开场白',
-    tags            VARCHAR(512) DEFAULT NULL COMMENT '标签逗号分隔',
-    rank_info       VARCHAR(256) DEFAULT NULL COMMENT '段位',
-    position_info   VARCHAR(256) DEFAULT NULL COMMENT '擅长位置',
-    sort_order      INT          DEFAULT 0 COMMENT '排序',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted         TINYINT      NOT NULL DEFAULT 0,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='用户游戏配置';
-
--- ==================== 订单来源字典 ====================
-
-CREATE TABLE IF NOT EXISTS order_source (
+CREATE TABLE order_source (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(64) NOT NULL COMMENT '来源名称',
     sort_order INT DEFAULT 0,
@@ -340,11 +275,7 @@ CREATE TABLE IF NOT EXISTS order_source (
     deleted TINYINT DEFAULT 0
 ) ENGINE=InnoDB COMMENT='订单来源字典（全局）';
 
-INSERT IGNORE INTO order_source (name, sort_order) VALUES ('pw店（备注填店名）', 1), ('抖音', 2), ('小红书', 3), ('其他', 4);
-
--- ==================== 支付方式字典 ====================
-
-CREATE TABLE IF NOT EXISTS payment_method (
+CREATE TABLE payment_method (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(64) NOT NULL COMMENT '支付方式名称',
     sort_order INT DEFAULT 0,
@@ -353,22 +284,61 @@ CREATE TABLE IF NOT EXISTS payment_method (
     deleted TINYINT DEFAULT 0
 ) ENGINE=InnoDB COMMENT='支付方式字典（全局）';
 
+CREATE TABLE package_type (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL COMMENT '类型名称',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '0禁用 1启用',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    INDEX idx_status (status)
+) ENGINE=InnoDB COMMENT='套餐类型字典';
+
+CREATE TABLE vip_level (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `level` INT NOT NULL COMMENT '等级数字 1-6',
+    name VARCHAR(64) NOT NULL COMMENT '等级名称 如 VIP1',
+    threshold DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '消费门槛(元)',
+    discount INT NOT NULL DEFAULT 100 COMMENT '折扣 如98=98折',
+    benefits VARCHAR(500) DEFAULT NULL COMMENT '等级福利描述',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
+    UNIQUE KEY uk_level (`level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP等级配置';
+
+-- ==================== 初始化数据 ====================
+
+-- 默认超级管理员 (密码: admin123)
+INSERT IGNORE INTO sys_admin (username, password, real_name, role, status) VALUES
+('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '超级管理员', 'SUPER_ADMIN', 1);
+
+-- 演示陪玩用户 (密码: user123)
+INSERT IGNORE INTO sys_user (username, password, nickname, member_type, status) VALUES
+('demo', '$2a$10$8.UnVuG9HHgfftdD04OK0.zJx/qx3nYpBWn0BGB8oIvKOSSpjRqW.', '演示陪玩', 0, 1);
+
+INSERT IGNORE INTO user_profile (user_id, template_type, intro, order_status) VALUES
+(1, 1, '专业游戏陪玩，多赛季王者，声音甜美~', 1);
+
+INSERT IGNORE INTO user_finance_setting (user_id, monthly_target, monthly_expense_target) VALUES (1, 10000.00, 0.00);
+
+-- 订单来源
+INSERT IGNORE INTO order_source (name, sort_order) VALUES ('pw店（备注填店名）', 1), ('抖音', 2), ('小红书', 3), ('其他', 4);
+
+-- 支付方式
 INSERT IGNORE INTO payment_method (name, sort_order) VALUES ('平台', 1), ('微信', 2), ('支付宝', 3), ('现金', 4);
 
--- ==================== 2.0 迁移说明 ====================
+-- 套餐类型
+INSERT IGNORE INTO package_type (name, sort_order, status) VALUES
+('小时单', 1, 1), ('包夜', 2, 1), ('教学', 3, 1), ('包月', 4, 1), ('线下', 5, 1);
 
--- 1. 订单来源枚举变更: 1平台派单/2微信QQ私域/3线下预约 → 引用 order_source 表ID
--- 已有数据库执行:
---   ALTER TABLE customer ADD COLUMN source_id BIGINT DEFAULT NULL COMMENT '关联order_source.id' AFTER source;
---   ALTER TABLE `order` MODIFY COLUMN order_source BIGINT DEFAULT NULL COMMENT '引用order_source.id';
-
--- 2. AI辅助模块已删除，相关表 ai_call_log、配置 ai.* 及 Java 代码已移除
--- 已有数据库执行: DROP TABLE IF EXISTS ai_call_log;
-
--- 3. 支付方式从硬编码改为 payment_method 字典表，order 表增加 payment_method_id、package_name 字段
--- 已有数据库执行:
---   CREATE TABLE IF NOT EXISTS payment_method (id BIGINT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(64) NOT NULL, sort_order INT DEFAULT 0, status TINYINT DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted TINYINT DEFAULT 0) ENGINE=InnoDB COMMENT='支付方式字典（全局）';
---   INSERT IGNORE INTO payment_method (name, sort_order) VALUES ('平台', 1), ('微信', 2), ('支付宝', 3), ('现金', 4);
---   ALTER TABLE `order` ADD COLUMN package_name VARCHAR(256) DEFAULT NULL COMMENT '套餐名称' AFTER package_id;
---   ALTER TABLE `order` ADD COLUMN payment_method_id BIGINT DEFAULT NULL COMMENT '关联payment_method.id' AFTER payment_method;
---   ALTER TABLE `order` ADD COLUMN settle_ratio DECIMAL(5,2) DEFAULT 100.00 COMMENT '到手比例(100=100%)';
+-- VIP等级
+INSERT IGNORE INTO vip_level (`level`, name, threshold, discount, benefits, sort_order) VALUES
+(1, 'VIP1', 500, 98, '全场98折', 1),
+(2, 'VIP2', 1500, 98, '全场98折', 2),
+(3, 'VIP3', 3888, 95, '全场95折', 3),
+(4, 'VIP4', 10000, 95, '全场95折', 4),
+(5, 'VIP5', 16888, 92, '全场92折', 5),
+(6, 'VIP6', 28888, 92, '专属客服·全场9折', 6);

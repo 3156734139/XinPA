@@ -19,7 +19,7 @@ public interface CustomerService {
     /**
      * 分页查询客户
      */
-    Page<Customer> page(Long userId, String nickname, String contact, Long sourceId,
+    Page<Customer> page(Long userId, String keyword, Long sourceId,
                         Integer spendLevel, BigDecimal minSpend, BigDecimal maxSpend,
                         Integer minOrders, Integer maxOrders, Integer isBlacklist,
                         long current, long size);
@@ -53,4 +53,14 @@ public interface CustomerService {
      * 移出黑名单
      */
     void removeBlacklist(Long id, Long userId);
+
+    /**
+     * 统计用户客户总数
+     */
+    long countByUserId(Long userId);
+
+    /**
+     * 根据已完成订单重新计算客户的累计消费、下单次数、消费等级
+     */
+    void refreshCustomerStats(Long customerId);
 }

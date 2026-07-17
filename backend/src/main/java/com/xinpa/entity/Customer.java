@@ -1,6 +1,7 @@
 package com.xinpa.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,11 +18,13 @@ public class Customer {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    @NotBlank(message = "客户昵称不能为空")
     private String nickname;
     private String contact;
     private String source;
     /** 关联order_source.id */
     private Long sourceId;
+    /** 优惠等级: 0无 1VIP1 2VIP2 3VIP3 4VIP4 5VIP5 6VIP6 */
     private Integer spendLevel;
     private String gamePreference;
     private String personality;

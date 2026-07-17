@@ -3,12 +3,10 @@ package com.xinpa.controller;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
 import com.xinpa.entity.PricePackage;
-import com.xinpa.entity.UserGameConfig;
 import com.xinpa.entity.UserProfile;
 import com.xinpa.service.MaterialService;
 import com.xinpa.service.OrderService;
 import com.xinpa.service.PricePackageService;
-import com.xinpa.service.UserGameConfigService;
 import com.xinpa.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +27,6 @@ public class ProfileController {
     private final UserProfileService userProfileService;
     private final PricePackageService pricePackageService;
     private final MaterialService materialService;
-    private final UserGameConfigService userGameConfigService;
     private final OrderService orderService;
 
     // ==================== 人设主页 ====================
@@ -122,6 +119,7 @@ public class ProfileController {
      */
     @PutMapping("/packages")
     public Result<Void> updatePackage(@RequestBody PricePackage pkg) {
+        pkg.setUserId(UserContext.getUserId());
         pricePackageService.update(pkg);
         return Result.ok();
     }
@@ -163,45 +161,6 @@ public class ProfileController {
     @DeleteMapping("/materials/{id}")
     public Result<Void> deleteMaterial(@PathVariable Long id) {
         materialService.delete(id, UserContext.getUserId());
-        return Result.ok();
-    }
-
-    // ==================== 游戏配置 ====================
-
-    /**
-     * 获取所有游戏配置列表
-     */
-    @GetMapping("/game-configs")
-    public Result<?> listGameConfigs() {
-        return Result.ok(userGameConfigService.listByUserId(UserContext.getUserId()));
-    }
-
-    /**
-     * 添加游戏配置
-     */
-    @PostMapping("/game-configs")
-    public Result<Void> addGameConfig(@RequestBody UserGameConfig config) {
-        config.setUserId(UserContext.getUserId());
-        userGameConfigService.add(config);
-        return Result.ok();
-    }
-
-    /**
-     * 更新游戏配置
-     */
-    @PutMapping("/game-configs")
-    public Result<Void> updateGameConfig(@RequestBody UserGameConfig config) {
-        config.setUserId(UserContext.getUserId());
-        userGameConfigService.update(config);
-        return Result.ok();
-    }
-
-    /**
-     * 删除游戏配置
-     */
-    @DeleteMapping("/game-configs/{id}")
-    public Result<Void> deleteGameConfig(@PathVariable Long id) {
-        userGameConfigService.delete(id, UserContext.getUserId());
         return Result.ok();
     }
 }

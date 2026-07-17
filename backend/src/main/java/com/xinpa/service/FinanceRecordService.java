@@ -45,6 +45,13 @@ public interface FinanceRecordService {
     List<Map<String, Object>> dailyIncome(Long userId, LocalDate start, LocalDate end);
 
     /**
+     * 趋势图数据（支持日/周/月聚合，返回收入和支出）
+     *
+     * @param mode day / week / month
+     */
+    List<Map<String, Object>> trend(Long userId, String mode, LocalDate start, LocalDate end);
+
+    /**
      * 获取财务设置
      */
     UserFinanceSetting getSetting(Long userId);

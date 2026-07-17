@@ -4,9 +4,6 @@
       <div class="bg-orb bg-orb-1"></div>
       <div class="bg-orb bg-orb-2"></div>
       <div class="bg-orb bg-orb-3"></div>
-      <span class="deco deco-1">♡</span>
-      <span class="deco deco-2">✿</span>
-      <span class="deco deco-3">✦</span>
     </div>
     <div class="register-card">
       <div class="register-card-inner">
@@ -23,10 +20,10 @@
             <el-input v-model="form.nickname" placeholder="昵称/艺名（选填）" :prefix-icon="Edit" />
           </el-form-item>
           <el-form-item prop="password">
-            <el-input v-model="form.password" type="password" placeholder="密码（6-64位）" :prefix-icon="Lock" show-password />
+            <el-input v-model="form.password" placeholder="密码（6-64位）" :prefix-icon="Lock" show-password />
           </el-form-item>
           <el-form-item>
-            <el-button size="large" class="register-btn" :loading="loading" @click="handleRegister">
+            <el-button size="large" type="primary" :loading="loading" @click="handleRegister">
               注册
             </el-button>
           </el-form-item>
@@ -127,19 +124,6 @@ async function handleRegister() {
   opacity: 0.2;
 }
 
-/* 装饰图标 */
-.deco {
-  position: absolute;
-  opacity: 0.15;
-  font-size: 24px;
-  animation: float 6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.deco-1 { top: 18%; left: 12%; font-size: 28px; animation-delay: 0s; }
-.deco-2 { top: 22%; right: 15%; font-size: 20px; animation-delay: 1.5s; }
-.deco-3 { bottom: 25%; left: 18%; font-size: 22px; animation-delay: 3s; }
-
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-10px) rotate(6deg); }
@@ -186,24 +170,6 @@ async function handleRegister() {
 .subtitle {
   color: #A890B0;
   font-size: 14px;
-}
-
-.register-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 15px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #FFD6E0, #E8DFF5);
-  color: #5D4E6D;
-  font-weight: 700;
-  border: none;
-}
-
-.register-btn:hover {
-  background: linear-gradient(135deg, #FFC8D6, #E0D0F0) !important;
-  color: #5D4E6D !important;
-  transform: scale(1.02);
-  box-shadow: 0 4px 16px rgba(232, 130, 154, 0.2);
 }
 
 .links {

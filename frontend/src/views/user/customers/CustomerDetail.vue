@@ -15,11 +15,14 @@
           <el-descriptions-item label="陪伴天数">
             {{ customer.createdAt ? companionDays(customer.createdAt) : '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="消费水平">{{ ['', '低', '中', '高'][customer.spendLevel] || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="累计消费">{{ customer.totalSpend }} 元</el-descriptions-item>
+          <el-descriptions-item label="优惠等级">{{ ['', 'VIP1', 'VIP2', 'VIP3', 'VIP4', 'VIP5', 'VIP6'][customer.spendLevel] || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="累计消费">
+            <el-link type="primary" @click="showOrderHistory" :underline="false" style="cursor: pointer;">
+              {{ customer.totalSpend }} 元
+            </el-link>
+          </el-descriptions-item>
           <el-descriptions-item label="下单次数">{{ customer.orderCount }} 次</el-descriptions-item>
-          <el-descriptions-item label="最后下单">{{ customer.lastOrderTime || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="生日">{{ customer.birthday || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="最后下单">{{ formatDateTime(customer.lastOrderTime) || '-' }}</el-descriptions-item>
           <el-descriptions-item label="黑名单">
             <el-tag v-if="customer.isBlacklist" type="danger">已拉黑</el-tag>
             <el-tag v-else type="success">正常</el-tag>
@@ -30,6 +33,38 @@
         </el-descriptions>
       </div>
     </el-card>
+
+    <!-- 历史订单弹窗 -->
+    <el-dialog v-model="showOrders" title="历史订单" width="900px">
+      <el-table :data="orderList" stripe v-loading="loadingOrders">
+        <el-table-column prop="orderNo" label="订单号" width="200">
+          <template #default="{ row }">
+            <el-link type="primary" :underline="false" @click="$router.push(`/orders/${row.id}`)">{{ row.orderNo }}</el-link>
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="标题" />
+        <el-table-column prop="finalAmount" label="实付金额" width="100" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        v-model:current="orderPage"
+        v-model:page-size="orderPageSize"
+        :total="orderTotal"
+        layout="prev, pager, next"
+        class="mt-16"
+        @current-change="loadOrders"
+      />
+      <template #footer>
+        <el-button @click="showOrders = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -38,14 +73,25 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { getCustomerDetail } from '@/api/customers';
 import { getEnabledSources } from '@/api/orderSource';
+import { getOrders } from '@/api/orders';
+import { formatDateTime } from '@/utils/format';
+import { getStatusLabel as statusLabel, getStatusType as statusType } from '@/types';
 
 const route = useRoute();
 const customer = ref<any>(null);
 const sourceMap = ref<Record<number, string>>({});
 
+// 订单弹窗
+const showOrders = ref(false);
+const orderList = ref<any[]>([]);
+const orderTotal = ref(0);
+const orderPage = ref(1);
+const orderPageSize = ref(10);
+const loadingOrders = ref(false);
+
 function companionDays(createdAt: string): string {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
-  return days === 0 ? '今天' : `${days}天`;
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000) + 1;
+  return `${days}天`;
 }
 
 function getCustomerSource(c: any): string {
@@ -55,8 +101,28 @@ function getCustomerSource(c: any): string {
   return c.source || '-';
 }
 
+async function showOrderHistory() {
+  showOrders.value = true;
+  orderPage.value = 1;
+  await loadOrders();
+}
+
+async function loadOrders() {
+  loadingOrders.value = true;
+  try {
+    const res: any = await getOrders({
+      customerId: customer.value?.id,
+      current: orderPage.value,
+      size: orderPageSize.value,
+    });
+    orderList.value = res.data?.records || [];
+    orderTotal.value = res.data?.total || 0;
+  } finally {
+    loadingOrders.value = false;
+  }
+}
+
 onMounted(async () => {
-  // 并行加载客户详情和来源列表
   const [res, srcRes] = await Promise.all([
     getCustomerDetail(Number(route.params.id)),
     getEnabledSources().catch(() => ({ data: [] })),
@@ -69,4 +135,5 @@ onMounted(async () => {
 
 <style scoped>
 .header-bar { display: flex; justify-content: space-between; align-items: center; }
+.mt-16 { margin-top: 16px; }
 </style>

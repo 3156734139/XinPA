@@ -17,6 +17,7 @@ public class UserFinanceSetting {
     private Long id;
     private Long userId;
     private BigDecimal monthlyTarget;
+    private BigDecimal monthlyExpenseTarget;
     private BigDecimal withdrawFeeRate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

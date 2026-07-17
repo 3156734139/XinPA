@@ -4,7 +4,6 @@ import com.xinpa.common.PageResult;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
 import com.xinpa.dto.OrderQueryDTO;
-import com.xinpa.dto.OrderTimerDTO;
 import com.xinpa.entity.Appointment;
 import com.xinpa.entity.Order;
 import com.xinpa.entity.PricePackage;
@@ -16,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -35,16 +35,28 @@ public class OrderController {
      */
     @GetMapping
     public Result<PageResult<Order>> page(
-            @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Integer source,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
+            @RequestParam(required = false) Integer minMinutes,
+            @RequestParam(required = false) Integer maxMinutes,
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "20") long size) {
         OrderQueryDTO query = new OrderQueryDTO();
         query.setUserId(UserContext.getUserId());
-        query.setStatus(status);
         query.setOrderSource(source);
         query.setKeyword(keyword);
+        query.setCustomerId(customerId);
+        query.setStartDate(startDate);
+        query.setEndDate(endDate);
+        query.setMinAmount(minAmount);
+        query.setMaxAmount(maxAmount);
+        query.setMinMinutes(minMinutes);
+        query.setMaxMinutes(maxMinutes);
         query.setCurrent(current);
         query.setSize(size);
         return Result.ok(PageResult.of(orderService.page(query)));
@@ -55,24 +67,24 @@ public class OrderController {
      */
     @GetMapping("/{id}")
     public Result<Order> detail(@PathVariable Long id) {
-        return Result.ok(orderService.getById(id));
+        Order order = orderService.getById(id);
+        if (order == null || !order.getUserId().equals(UserContext.getUserId())) {
+            return Result.fail("订单不存在");
+        }
+        return Result.ok(order);
     }
 
     /**
-     * 创建订单（与价目套餐联动：传入packageId自动填充单价）
+     * 创建订单
      */
     @PostMapping
-    public Result<Void> create(@RequestBody Order order) {
+    public Result<Void> create(@Valid @RequestBody Order order) {
         order.setUserId(UserContext.getUserId());
-        // 如果传入了套餐ID，自动从套餐表中读取单价和套餐名称并填充
         if (order.getPackageId() != null) {
             PricePackage pkg = pricePackageService.getById(order.getPackageId());
             if (pkg != null && pkg.getUserId().equals(UserContext.getUserId())) {
                 order.setUnitPrice(pkg.getPrice());
                 order.setPackageName(pkg.getName());
-                if (order.getTitle() == null) {
-                    order.setTitle(pkg.getName());
-                }
             }
         }
         orderService.create(order);
@@ -84,69 +96,13 @@ public class OrderController {
      */
     @PutMapping
     public Result<Void> update(@RequestBody Order order) {
+        order.setUserId(UserContext.getUserId());
         orderService.update(order);
-        return Result.ok();
-    }
-
-    /**
-     * 开始计时
-     */
-    @PostMapping("/timer/start")
-    public Result<Void> startTimer(@Valid @RequestBody OrderTimerDTO dto) {
-        orderService.startTimer(dto);
-        return Result.ok();
-    }
-
-    /**
-     * 暂停计时
-     */
-    @PostMapping("/timer/pause")
-    public Result<Void> pauseTimer(@Valid @RequestBody OrderTimerDTO dto) {
-        orderService.pauseTimer(dto);
-        return Result.ok();
-    }
-
-    /**
-     * 结束计时
-     */
-    @PostMapping("/timer/end")
-    public Result<Void> endTimer(@Valid @RequestBody OrderTimerDTO dto) {
-        orderService.endTimer(dto);
-        return Result.ok();
-    }
-
-    /**
-     * 补时
-     */
-    @PostMapping("/timer/extra")
-    public Result<Void> addExtra(@Valid @RequestBody OrderTimerDTO dto) {
-        orderService.addExtraMinutes(dto);
-        return Result.ok();
-    }
-
-    /**
-     * 结算
-     */
-    @PostMapping("/{id}/settle")
-    public Result<Void> settle(@PathVariable Long id) {
-        orderService.settle(id, UserContext.getUserId());
-        return Result.ok();
-    }
-
-    /**
-     * 退款
-     */
-    @PostMapping("/{id}/refund")
-    public Result<Void> refund(@PathVariable Long id) {
-        orderService.refund(id, UserContext.getUserId());
         return Result.ok();
     }
 
     // ==================== 预约日历 ====================
 
-    /**
-     * 获取预约列表
-     */
     @GetMapping("/appointments")
     public Result<?> appointments(
             @RequestParam(required = false) LocalDateTime start,
@@ -154,9 +110,6 @@ public class OrderController {
         return Result.ok(appointmentService.listByDateRange(UserContext.getUserId(), start, end));
     }
 
-    /**
-     * 创建预约
-     */
     @PostMapping("/appointments")
     public Result<Void> createAppointment(@RequestBody Appointment appointment) {
         appointment.setUserId(UserContext.getUserId());
@@ -164,27 +117,18 @@ public class OrderController {
         return Result.ok();
     }
 
-    /**
-     * 更新预约
-     */
     @PutMapping("/appointments")
     public Result<Void> updateAppointment(@RequestBody Appointment appointment) {
         appointmentService.update(appointment);
         return Result.ok();
     }
 
-    /**
-     * 删除预约
-     */
     @DeleteMapping("/appointments/{id}")
     public Result<Void> deleteAppointment(@PathVariable Long id) {
         appointmentService.delete(id, UserContext.getUserId());
         return Result.ok();
     }
 
-    /**
-     * 检查预约冲突
-     */
     @GetMapping("/appointments/conflict")
     public Result<?> checkConflict(
             @RequestParam LocalDateTime start,

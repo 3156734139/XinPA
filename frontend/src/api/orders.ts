@@ -20,36 +20,6 @@ export function updateOrder(data: any) {
   return request.put('/orders', data);
 }
 
-/** 开始计时 */
-export function startTimer(orderId: number) {
-  return request.post('/orders/timer/start', { orderId });
-}
-
-/** 暂停计时 */
-export function pauseTimer(orderId: number) {
-  return request.post('/orders/timer/pause', { orderId });
-}
-
-/** 结束计时 */
-export function endTimer(orderId: number) {
-  return request.post('/orders/timer/end', { orderId });
-}
-
-/** 补时 */
-export function addExtraMinutes(orderId: number, extraMinutes: number) {
-  return request.post('/orders/timer/extra', { orderId, extraMinutes });
-}
-
-/** 结算 */
-export function settleOrder(id: number) {
-  return request.post(`/orders/${id}/settle`);
-}
-
-/** 退款 */
-export function refundOrder(id: number) {
-  return request.post(`/orders/${id}/refund`);
-}
-
 /** 获取预约列表 */
 export function getAppointments(params: any) {
   return request.get('/orders/appointments', { params });

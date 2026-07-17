@@ -30,7 +30,7 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button size="large" class="login-btn" :loading="loading" @click="handleLogin">
+            <el-button size="large" type="primary" :loading="loading" @click="handleLogin">
               管理员登录
             </el-button>
           </el-form-item>
@@ -169,24 +169,6 @@ async function handleLogin() {
 .subtitle {
   color: #A890B0;
   font-size: 14px;
-}
-
-.login-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 15px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #E8DFF5, #D5C8E8);
-  color: #5D4E6D;
-  font-weight: 700;
-  border: none;
-}
-
-.login-btn:hover {
-  background: linear-gradient(135deg, #E0D5F0, #CBB8E0) !important;
-  color: #5D4E6D !important;
-  transform: scale(1.02);
-  box-shadow: 0 4px 16px rgba(160, 127, 192, 0.2);
 }
 
 .links {

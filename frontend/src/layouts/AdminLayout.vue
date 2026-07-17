@@ -3,7 +3,7 @@
     <el-aside :width="isCollapse ? '64px' : '240px'" class="admin-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <span class="logo-icon">⬡</span>
+          <PixelSticker :size="22" />
           <span v-show="!isCollapse" class="logo-text">管理后台</span>
         </div>
       </div>
@@ -32,6 +32,14 @@
         <el-menu-item index="/admin/payment-methods">
           <el-icon><Coin /></el-icon>
           <span>支付方式管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/package-types">
+          <el-icon><Coin /></el-icon>
+          <span>套餐类型管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/vip-levels">
+          <el-icon><TrendCharts /></el-icon>
+          <span>优惠等级配置</span>
         </el-menu-item>
         <el-menu-item index="/admin/announcements">
           <el-icon><Bell /></el-icon>
@@ -75,7 +83,11 @@
       </el-header>
       <el-main class="admin-main">
         <div class="page-container">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <transition name="fade-slide" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
       </el-main>
     </el-container>
@@ -86,6 +98,7 @@
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
+import PixelSticker from '@/components/PixelSticker.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -268,5 +281,7 @@ function handleCommand(command: string) {
   background: #f0f2f5;
   padding: 24px;
   overflow-y: auto;
+  position: relative;
 }
+
 </style>

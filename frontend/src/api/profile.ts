@@ -51,25 +51,3 @@ export function uploadMaterial(data: FormData) {
 export function deleteMaterial(id: number) {
   return request.delete(`/profile/materials/${id}`);
 }
-
-/** ========== 游戏配置 ========== */
-
-/** 获取游戏配置列表 */
-export function getGameConfigs() {
-  return request.get('/profile/game-configs');
-}
-
-/** 添加游戏配置 */
-export function addGameConfig(data: any) {
-  return request.post('/profile/game-configs', data);
-}
-
-/** 更新游戏配置 */
-export function updateGameConfig(data: any) {
-  return request.put('/profile/game-configs', data);
-}
-
-/** 删除游戏配置 */
-export function deleteGameConfig(id: number) {
-  return request.delete(`/profile/game-configs/${id}`);
-}

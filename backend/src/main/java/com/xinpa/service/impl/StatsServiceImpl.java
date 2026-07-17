@@ -1,5 +1,6 @@
 package com.xinpa.service.impl;
 
+import com.xinpa.mapper.CustomerMapper;
 import com.xinpa.mapper.FinanceRecordMapper;
 import com.xinpa.mapper.StatsMapper;
 import com.xinpa.service.StatsService;
@@ -20,6 +21,7 @@ public class StatsServiceImpl implements StatsService {
 
     private final StatsMapper statsMapper;
     private final FinanceRecordMapper financeRecordMapper;
+    private final CustomerMapper customerMapper;
 
     @Override
     public Map<String, Object> getOverview() {
@@ -28,7 +30,7 @@ public class StatsServiceImpl implements StatsService {
         overview.put("todayNewUsers", statsMapper.countTodayNewUsers());
         overview.put("vipUsers", statsMapper.countVipUsers());
         overview.put("yearRevenue", financeRecordMapper.sumYearlyRevenue(LocalDate.now().getYear()));
-        overview.put("blacklistCount", statsMapper.countUsers()); // 简化处理
+        overview.put("blacklistCount", customerMapper.countAllBlacklist());
         return overview;
     }
 

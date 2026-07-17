@@ -20,9 +20,9 @@ export function getFinanceStats() {
   return request.get('/finance/stats');
 }
 
-/** 收入趋势 */
-export function getFinanceTrend(start?: string, end?: string) {
-  return request.get('/finance/trend', { params: { start, end } });
+/** 收支趋势（支持日/周/月聚合） */
+export function getFinanceTrend(mode?: string, start?: string, end?: string) {
+  return request.get('/finance/trend', { params: { mode, start, end } });
 }
 
 /** 获取财务设置 */
@@ -35,7 +35,3 @@ export function updateFinanceSetting(data: any) {
   return request.put('/finance/setting', data);
 }
 
-/** 提现计算器 */
-export function withdrawCalc(amount: number) {
-  return request.get('/finance/withdraw-calc', { params: { amount } });
-}

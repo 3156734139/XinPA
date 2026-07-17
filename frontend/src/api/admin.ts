@@ -113,3 +113,79 @@ export function deletePaymentMethod(id: number) {
 export function togglePaymentMethodStatus(id: number, status: number) {
   return request.put(`/admin/system/payment-methods/${id}/status?status=${status}`);
 }
+
+// ==================== 套餐类型管理 ====================
+
+/** 套餐类型列表 */
+export function getPackageTypes() {
+  return request.get('/admin/system/package-types');
+}
+
+/** 新增套餐类型 */
+export function createPackageType(data: any) {
+  return request.post('/admin/system/package-types', data);
+}
+
+/** 更新套餐类型 */
+export function updatePackageType(data: any) {
+  return request.put('/admin/system/package-types', data);
+}
+
+/** 删除套餐类型 */
+export function deletePackageType(id: number) {
+  return request.delete(`/admin/system/package-types/${id}`);
+}
+
+/** 切换套餐类型状态 */
+export function togglePackageTypeStatus(id: number, status: number) {
+  return request.put(`/admin/system/package-types/${id}/status?status=${status}`);
+}
+
+// ==================== 系统配置 ====================
+
+/** 系统配置列表 */
+export function getConfigs() {
+  return request.get('/admin/system/configs');
+}
+
+/** 新增系统配置 */
+export function createConfig(data: any) {
+  return request.post('/admin/system/configs', data);
+}
+
+/** 更新系统配置 */
+export function updateConfig(data: any) {
+  return request.put('/admin/system/configs', data);
+}
+
+/** 删除系统配置 */
+export function deleteConfig(id: number) {
+  return request.delete(`/admin/system/configs/${id}`);
+}
+
+// ==================== VIP等级管理 ====================
+
+/** VIP等级列表 */
+export function getVipLevels() {
+  return request.get('/admin/system/vip-levels');
+}
+
+/** 新增VIP等级 */
+export function createVipLevel(data: any) {
+  return request.post('/admin/system/vip-levels', data);
+}
+
+/** 更新VIP等级 */
+export function updateVipLevel(data: any) {
+  return request.put('/admin/system/vip-levels', data);
+}
+
+/** 删除VIP等级 */
+export function deleteVipLevel(id: number) {
+  return request.delete(`/admin/system/vip-levels/${id}`);
+}
+
+/** 切换VIP等级状态 */
+export function toggleVipLevelStatus(id: number, status: number) {
+  return request.put(`/admin/system/vip-levels/${id}/status?status=${status}`);
+}

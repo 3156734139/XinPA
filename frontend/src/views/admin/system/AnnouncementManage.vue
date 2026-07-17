@@ -18,7 +18,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="发布时间" width="160" />
+        <el-table-column label="发布时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button size="small" link :type="row.status === 1 ? 'warning' : 'success'" @click="toggleStatus(row)">
@@ -31,11 +33,11 @@
     </el-card>
 
     <el-dialog v-model="showCreate" title="发布公告" width="500px">
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="标题">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="80px">
+        <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="6" />
         </el-form-item>
       </el-form>
@@ -50,11 +52,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { FormInstance } from 'element-plus';
 import { getAdminAnnouncements, createAnnouncement, toggleAnnouncement, deleteAnnouncement } from '@/api/admin';
+import { formatDateTime } from '@/utils/format';
 
 const list = ref<any[]>([]);
 const showCreate = ref(false);
+const formRef = ref<FormInstance>();
 const form = ref({ title: '', content: '' });
+const formRules = {
+  title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入公告内容', trigger: 'blur' }],
+};
 
 onMounted(() => { loadList(); });
 
@@ -64,6 +73,12 @@ async function loadList() {
 }
 
 async function handleCreate() {
+  if (!formRef.value) return;
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
   await createAnnouncement(form.value);
   ElMessage.success('发布成功');
   showCreate.value = false;

@@ -3,10 +3,10 @@
     <el-card shadow="never">
       <template #header>
         <div class="header-bar">
-          <span>素材库</span>
+          <span><PixelSticker :size="18" /> 素材库</span>
           <div>
             <el-upload :show-file-list="false" :http-request="handleUpload" accept="image/*,audio/*,video/*">
-              <el-button type="primary" size="small">上传素材</el-button>
+              <el-button size="small" type="primary">上传素材</el-button>
             </el-upload>
           </div>
         </div>
@@ -27,10 +27,12 @@
         <el-table-column label="水印" width="80">
           <template #default="{ row }">{{ row.watermark ? '已添加' : '未添加' }}</template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="上传时间" width="180" />
+        <el-table-column label="上传时间" width="180">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" link @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -40,8 +42,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getMaterials, uploadMaterial, deleteMaterial } from '@/api/profile';
+import PixelSticker from '@/components/PixelSticker.vue';
+import { formatDateTime } from '@/utils/format';
 
 const list = ref<any[]>([]);
 const filterType = ref<number | undefined>(undefined);
@@ -65,9 +69,14 @@ async function handleUpload(options: any) {
 }
 
 async function handleDelete(id: number) {
-  await deleteMaterial(id);
-  ElMessage.success('已删除');
-  loadList();
+  try {
+    await ElMessageBox.confirm('确定删除该素材？', '确认删除', { type: 'warning' });
+    await deleteMaterial(id);
+    ElMessage.success('已删除');
+    loadList();
+  } catch {
+    // 取消删除
+  }
 }
 </script>
 

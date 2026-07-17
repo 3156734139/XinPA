@@ -18,7 +18,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="160" />
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button size="small" link @click="edit(row)">编辑</el-button>
@@ -64,6 +66,7 @@ import {
   getPaymentMethods, createPaymentMethod, updatePaymentMethod,
   deletePaymentMethod, togglePaymentMethodStatus,
 } from '@/api/admin';
+import { formatDateTime } from '@/utils/format';
 
 const list = ref<any[]>([]);
 const showDialog = ref(false);

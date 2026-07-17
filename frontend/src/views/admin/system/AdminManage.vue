@@ -23,8 +23,12 @@
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lastLoginTime" label="最后登录" width="160" />
-        <el-table-column prop="createdAt" label="创建时间" width="160" />
+        <el-table-column label="最后登录" width="160">
+          <template #default="{ row }">{{ row.lastLoginTime ? formatDateTime(row.lastLoginTime) : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button size="small" link @click="edit(row)">编辑</el-button>
@@ -42,11 +46,11 @@
     </el-card>
 
     <el-dialog v-model="showCreate" :title="editId ? '编辑管理员' : '新增管理员'" width="450px">
-      <el-form :model="form" label-width="100px">
-        <el-form-item label="用户名">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+        <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="!!editId" />
         </el-form-item>
-        <el-form-item label="密码">
+        <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" :placeholder="editId ? '不填则不修改' : ''" />
         </el-form-item>
         <el-form-item label="真实姓名">
@@ -70,12 +74,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { FormInstance } from 'element-plus';
 import { getAdmins, createAdmin, updateAdmin, toggleAdminStatus } from '@/api/admin';
+import { formatDateTime } from '@/utils/format';
 
 const list = ref<any[]>([]);
 const showCreate = ref(false);
 const editId = ref<number | null>(null);
+const formRef = ref<FormInstance>();
 const form = ref<any>({ username: '', password: '', realName: '', role: 'ADMIN' });
+const formRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: !editId.value, message: '请输入密码', trigger: 'blur' }],
+};
 
 onMounted(() => { loadList(); });
 
@@ -91,6 +102,12 @@ function edit(row: any) {
 }
 
 async function handleSave() {
+  if (!formRef.value) return;
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
   if (editId.value) {
     await updateAdmin({ id: editId.value, ...form.value });
   } else {

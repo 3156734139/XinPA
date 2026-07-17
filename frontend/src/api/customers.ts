@@ -69,3 +69,8 @@ export function handleReminder(id: number) {
 export function ignoreReminder(id: number) {
   return request.post(`/customers/reminders/${id}/ignore`);
 }
+
+/** 获取 VIP 等级配置 */
+export function getVipConfigs() {
+  return request.get('/customers/vip-configs');
+}

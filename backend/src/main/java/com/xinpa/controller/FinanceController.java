@@ -6,6 +6,7 @@ import com.xinpa.common.UserContext;
 import com.xinpa.entity.FinanceRecord;
 import com.xinpa.entity.UserFinanceSetting;
 import com.xinpa.service.FinanceRecordService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public class FinanceController {
      * 新增流水
      */
     @PostMapping("/records")
-    public Result<Void> create(@RequestBody FinanceRecord record) {
+    public Result<Void> create(@Valid @RequestBody FinanceRecord record) {
         record.setUserId(UserContext.getUserId());
         financeRecordService.create(record);
         return Result.ok();
@@ -82,14 +83,13 @@ public class FinanceController {
     }
 
     /**
-     * 月度收入趋势
+     * 收支趋势图（支持日/周/月聚合）
      */
     @GetMapping("/trend")
-    public Result<?> trend(@RequestParam(required = false) LocalDate start,
+    public Result<?> trend(@RequestParam(defaultValue = "day") String mode,
+                           @RequestParam(required = false) LocalDate start,
                            @RequestParam(required = false) LocalDate end) {
-        if (start == null) start = LocalDate.now().minusDays(30);
-        if (end == null) end = LocalDate.now();
-        return Result.ok(financeRecordService.dailyIncome(UserContext.getUserId(), start, end));
+        return Result.ok(financeRecordService.trend(UserContext.getUserId(), mode, start, end));
     }
 
     /**

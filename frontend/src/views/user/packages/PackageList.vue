@@ -3,18 +3,14 @@
     <el-card shadow="never">
       <template #header>
         <div class="header-bar">
-          <span>♡ 价目套餐</span>
-          <div class="header-actions">
-            <el-button size="small" :icon="List" @click="$router.push('/orders')">订单管理</el-button>
-            <el-button size="small" :icon="Money" @click="$router.push('/finance')">财务记账</el-button>
-            <el-button type="primary" size="small" @click="showDialog = true">添加套餐</el-button>
-          </div>
+          <span><PixelSticker :size="18" /> 价目套餐</span>
+          <el-button size="small" type="primary" @click="showDialog = true">添加套餐</el-button>
         </div>
       </template>
       <el-table :data="list" stripe>
         <el-table-column prop="name" label="套餐名称" />
         <el-table-column label="类型" width="90">
-          <template #default="{ row }">{{ typeMap[row.packageType] }}</template>
+          <template #default="{ row }">{{ typeMap[row.packageType] || '-' }}</template>
         </el-table-column>
         <el-table-column prop="price" label="价格(元)" width="100" />
         <el-table-column prop="unit" label="计价单位" width="80" />
@@ -39,7 +35,7 @@
           <template #default="{ row }">
             <el-button size="small" link @click="edit(row)">编辑</el-button>
             <el-button size="small" link type="primary" @click="quickOrder(row)">快速下单</el-button>
-            <el-button size="small" link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" link @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -53,11 +49,12 @@
         </el-form-item>
         <el-form-item label="套餐类型">
           <el-select v-model="form.packageType">
-            <el-option :value="1" label="小时单" />
-            <el-option :value="2" label="包夜" />
-            <el-option :value="3" label="教学" />
-            <el-option :value="4" label="包月" />
-            <el-option :value="5" label="线下" />
+            <el-option
+              v-for="t in typeOptions"
+              :key="t.id"
+              :value="t.id"
+              :label="t.name"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="价格(元)">
@@ -67,7 +64,7 @@
           <el-input v-model="form.unit" placeholder="如: 小时/局/天" />
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="form.description" type="textarea" :rows="2" />
+          <el-input v-model="form.description" :rows="2" />
         </el-form-item>
         <el-form-item label="上架">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
@@ -84,12 +81,15 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getPackages, addPackage, updatePackage, deletePackage } from '@/api/profile';
-import { List, Money } from '@element-plus/icons-vue';
+import { getEnabledPackageTypes } from '@/api/packageType';
+
+import PixelSticker from '@/components/PixelSticker.vue';
 
 const router = useRouter();
-const typeMap: Record<number, string> = { 1: '小时单', 2: '包夜', 3: '教学', 4: '包月', 5: '线下' };
+const typeMap = ref<Record<number, string>>({});
+const typeOptions = ref<any[]>([]);
 
 function formatMoney(val: number | string | null | undefined): string {
   if (val == null) return '-';
@@ -102,7 +102,16 @@ const editId = ref<number | null>(null);
 const saving = ref(false);
 const form = reactive({ name: '', packageType: 1, price: 0, unit: '小时', description: '', status: 1 });
 
-onMounted(() => { loadList(); });
+onMounted(() => { loadList(); loadTypes(); });
+
+async function loadTypes() {
+  try {
+    const res: any = await getEnabledPackageTypes();
+    const list = res.data || [];
+    typeOptions.value = list;
+    list.forEach((t: any) => { typeMap.value[t.id] = t.name; });
+  } catch { /* ignore */ }
+}
 
 /** 加载套餐列表 —— orderCount 和 totalRevenue 由后端从订单表实时统计 */
 async function loadList() {
@@ -161,9 +170,14 @@ async function handleSave() {
 }
 
 async function handleDelete(id: number) {
-  await deletePackage(id);
-  ElMessage.success('已删除');
-  loadList();
+  try {
+    await ElMessageBox.confirm('确定删除该套餐？', '确认删除', { type: 'warning' });
+    await deletePackage(id);
+    ElMessage.success('已删除');
+    loadList();
+  } catch {
+    // 取消删除
+  }
 }
 </script>
 
@@ -172,11 +186,6 @@ async function handleDelete(id: number) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
 }
 
 .link-text {

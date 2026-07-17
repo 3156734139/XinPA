@@ -64,7 +64,24 @@ public class FinanceRecordServiceImpl implements FinanceRecordService {
 
     @Override
     public List<Map<String, Object>> dailyIncome(Long userId, LocalDate start, LocalDate end) {
-        return financeRecordMapper.dailyIncome(userId, start, end);
+        return financeRecordMapper.dailyFinance(userId, start, end);
+    }
+
+    @Override
+    public List<Map<String, Object>> trend(Long userId, String mode, LocalDate start, LocalDate end) {
+        if (start == null) {
+            start = switch (mode != null ? mode : "day") {
+                case "week" -> LocalDate.now().minusDays(6);
+                case "month" -> LocalDate.now().withDayOfMonth(1);
+                default -> LocalDate.now().minusDays(30);
+            };
+        }
+        if (end == null) end = LocalDate.now();
+        return switch (mode != null ? mode : "day") {
+            case "week" -> financeRecordMapper.weeklyFinance(userId, start, end);
+            case "month" -> financeRecordMapper.monthlyFinance(userId, start, end);
+            default -> financeRecordMapper.dailyFinance(userId, start, end);
+        };
     }
 
     @Override
@@ -76,6 +93,7 @@ public class FinanceRecordServiceImpl implements FinanceRecordService {
             setting = new UserFinanceSetting();
             setting.setUserId(userId);
             setting.setMonthlyTarget(BigDecimal.ZERO);
+            setting.setMonthlyExpenseTarget(BigDecimal.ZERO);
             setting.setWithdrawFeeRate(BigDecimal.valueOf(0.006));
             userFinanceSettingMapper.insert(setting);
         }
