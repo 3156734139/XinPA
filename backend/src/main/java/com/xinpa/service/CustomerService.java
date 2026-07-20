@@ -68,4 +68,9 @@ public interface CustomerService {
      * 仅更新优惠等级（不触发全量统计重新计算）
      */
     void updateSpendLevel(Long id, int level);
+
+    /**
+     * 获取客户消费排行榜（按累计消费降序）
+     */
+    List<Customer> getSpendingRanking(Long userId, int limit);
 }

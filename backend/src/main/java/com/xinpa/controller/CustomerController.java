@@ -4,18 +4,17 @@ import com.xinpa.common.PageResult;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
 import com.xinpa.entity.Customer;
-import com.xinpa.entity.FollowUpReminder;
 import com.xinpa.entity.VipLevel;
 import com.xinpa.service.CustomerService;
-import com.xinpa.service.FollowUpReminderService;
 import com.xinpa.service.VipLevelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Objects;
+import java.math.RoundingMode;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 客户管理接口
@@ -26,7 +25,6 @@ import java.util.Objects;
 public class CustomerController {
 
     private final CustomerService customerService;
-    private final FollowUpReminderService followUpReminderService;
     private final VipLevelService vipLevelService;
 
     // ==================== 客户档案 ====================
@@ -140,41 +138,38 @@ public class CustomerController {
         return Result.ok(customerService.listByUserId(UserContext.getUserId()));
     }
 
-    // ==================== VIP 配置 ====================
-
     /**
-     * 获取 VIP 等级配置列表（门槛和折扣）
+     * 客户消费排行榜（按累计消费降序，取前20）
      */
-    @GetMapping("/vip-configs")
-    public Result<List<VipLevel>> vipConfigs() {
-        return Result.ok(vipLevelService.listEnabled());
+    @GetMapping("/spending-ranking")
+    public Result<List<Map<String, Object>>> spendingRanking() {
+        Long userId = UserContext.getUserId();
+        List<Customer> customers = customerService.getSpendingRanking(userId, 20);
+        BigDecimal grandTotal = customers.stream()
+                .map(Customer::getTotalSpend)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Map<String, Object>> ranking = new ArrayList<>();
+        for (int i = 0; i < customers.size(); i++) {
+            Customer c = customers.get(i);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("rank", i + 1);
+            item.put("customerId", c.getId());
+            item.put("nickname", c.getNickname() != null ? c.getNickname() : ("客户#" + c.getId()));
+            item.put("totalSpend", c.getTotalSpend());
+            item.put("orderCount", c.getOrderCount());
+            item.put("lastOrderTime", c.getLastOrderTime());
+            if (grandTotal.compareTo(BigDecimal.ZERO) > 0 && c.getTotalSpend() != null) {
+                item.put("percentage", c.getTotalSpend()
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(grandTotal, 1, RoundingMode.HALF_UP));
+            } else {
+                item.put("percentage", BigDecimal.ZERO);
+            }
+            ranking.add(item);
+        }
+        return Result.ok(ranking);
     }
 
-    // ==================== 回访提醒 ====================
-
-    /**
-     * 回访提醒列表
-     */
-    @GetMapping("/reminders")
-    public Result<?> reminders(@RequestParam(required = false) Integer status) {
-        return Result.ok(followUpReminderService.listByUserId(UserContext.getUserId(), status));
-    }
-
-    /**
-     * 处理回访
-     */
-    @PostMapping("/reminders/{id}/handle")
-    public Result<Void> handleReminder(@PathVariable Long id) {
-        followUpReminderService.handle(id, UserContext.getUserId());
-        return Result.ok();
-    }
-
-    /**
-     * 忽略回访
-     */
-    @PostMapping("/reminders/{id}/ignore")
-    public Result<Void> ignoreReminder(@PathVariable Long id) {
-        followUpReminderService.ignore(id, UserContext.getUserId());
-        return Result.ok();
-    }
 }

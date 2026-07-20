@@ -107,8 +107,7 @@ src/main/java/com/xinpa/
 ├── handler/
 │   └── MyMetaObjectHandler.java    # 自动填充 createTime/updateTime
 ├── mq/
-│   ├── AppointmentConsumer.java    # 预约提醒 MQ 消费者
-│   └── FollowUpConsumer.java      # 回访提醒 MQ 消费者
+│   └── AppointmentConsumer.java    # 预约提醒 MQ 消费者
 ├── schedule/
 │   └── AppointmentRemindTask.java  # 定时推送预约提醒
 └── util/                           # 工具类
@@ -175,7 +174,6 @@ src/
 
 ### 消息队列 (RabbitMQ)
 - 预约提醒交换机: `xinpa.appointment` → 队列 `xinpa.appointment.queue`
-- 回访提醒交换机: `xinpa.followup` → 队列 `xinpa.followup.queue`
 
 ### 文件存储
 - 使用 MinIO (本地 `localhost:9000`, bucket: `xinpa`)

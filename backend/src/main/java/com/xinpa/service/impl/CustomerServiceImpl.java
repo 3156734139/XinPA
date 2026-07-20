@@ -131,6 +131,17 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public List<Customer> getSpendingRanking(Long userId, int limit) {
+        return customerMapper.selectList(
+                new LambdaQueryWrapper<Customer>()
+                        .eq(Customer::getUserId, userId)
+                        .eq(Customer::getDeleted, 0)
+                        .eq(Customer::getIsBlacklist, 0)
+                        .orderByDesc(Customer::getTotalSpend)
+                        .last("LIMIT " + limit));
+    }
+
+    @Override
     public void refreshCustomerStats(Long customerId) {
         if (customerId == null) return;
         Customer customer = customerMapper.selectById(customerId);

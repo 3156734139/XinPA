@@ -14,7 +14,6 @@ import com.xinpa.mapper.OrderMapper;
 import com.xinpa.mapper.PaymentMethodMapper;
 import com.xinpa.mapper.PricePackageMapper;
 import com.xinpa.service.CustomerService;
-import com.xinpa.service.FollowUpReminderService;
 import com.xinpa.service.OrderService;
 import com.xinpa.service.VipLevelService;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +45,6 @@ public class OrderServiceImpl implements OrderService {
     private final FinanceRecordMapper financeRecordMapper;
     private final PaymentMethodMapper paymentMethodMapper;
     private final CustomerService customerService;
-    private final FollowUpReminderService followUpReminderService;
     private final VipLevelService vipLevelService;
     private final PricePackageMapper pricePackageMapper;
 
@@ -139,9 +137,11 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
         BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
-        // 自动应用客户VIP折扣
-        BigDecimal vipDiscount = calcVipDiscount(order.getCustomerId(), afterRatio);
-        discount = discount.add(vipDiscount);
+        // 手动选择是否应用VIP折扣
+        if (Boolean.TRUE.equals(order.getApplyVipDiscount())) {
+            BigDecimal vipDiscount = calcVipDiscount(order.getCustomerId(), afterRatio);
+            discount = discount.add(vipDiscount);
+        }
         order.setDiscountAmount(discount);
         order.setFinalAmount(afterRatio.subtract(discount));
         order.setSettleTime(LocalDateTime.now());
@@ -160,9 +160,6 @@ public class OrderServiceImpl implements OrderService {
         financeRecordMapper.insert(record);
 
         customerService.refreshCustomerStats(order.getCustomerId());
-
-        // 自动生成回访提醒（3天和7天后）
-        followUpReminderService.autoGenerate(order.getUserId(), order.getCustomerId(), order.getId());
     }
 
     @Override
@@ -195,10 +192,12 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
             BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount()
                     : (existing.getDiscountAmount() != null ? existing.getDiscountAmount() : BigDecimal.ZERO);
-            // 自动应用客户VIP折扣
-            Long customerId = order.getCustomerId() != null ? order.getCustomerId() : existing.getCustomerId();
-            BigDecimal vipDiscount = calcVipDiscount(customerId, afterRatio);
-            discount = discount.add(vipDiscount);
+            // 手动选择是否应用VIP折扣
+            if (Boolean.TRUE.equals(order.getApplyVipDiscount())) {
+                Long customerId = order.getCustomerId() != null ? order.getCustomerId() : existing.getCustomerId();
+                BigDecimal vipDiscount = calcVipDiscount(customerId, afterRatio);
+                discount = discount.add(vipDiscount);
+            }
             order.setDiscountAmount(discount);
             order.setFinalAmount(afterRatio.subtract(discount));
         }

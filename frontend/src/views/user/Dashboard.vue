@@ -104,36 +104,41 @@
         </el-card>
       </el-col>
 
-      <!-- 回访提醒 -->
+      <!-- 客户消费排行榜 -->
       <el-col :xs="24" :md="12" class="mb-20">
-        <el-card shadow="never" class="reminder-card">
+        <el-card shadow="never" class="ranking-card">
           <template #header>
             <div class="card-header">
-              <span>回访提醒 · 贴心小棉袄 ✿</span>
+              <span>客户消费排行榜</span>
             </div>
           </template>
-          <div v-if="reminders.length === 0" class="empty-state">
-            <el-empty description="暂无回访提醒" :image-size="80" />
+          <div v-if="spendingRanking.length === 0" class="empty-state">
+            <el-empty description="暂无客户数据" :image-size="80" />
           </div>
           <div class="scroll-list">
-            <div v-for="item in reminders" :key="item.id" class="reminder-item">
-              <div class="reminder-info">
-                <el-avatar :size="36" class="reminder-avatar" icon="UserFilled" />
-                <div class="reminder-text">
-                  <span class="reminder-customer">{{ getCustomerName(item.customerId) }}</span>
-                  <div class="reminder-meta">
-                    <el-tag size="small" :round>
-                      {{ item.remindType === 1 ? '3天回访' : item.remindType === 2 ? '7天回访' : '其他' }}
-                    </el-tag>
-                    <span :class="['reminder-days', { 'reminder-overdue': getRemainingDays(item) < 0, 'reminder-today': getRemainingDays(item) === 0 }]">
-                      {{ getDaysText(item) }}
-                    </span>
+            <div
+              v-for="(item, index) in spendingRanking"
+              :key="item.customerId"
+              :class="['ranking-item', { 'ranking-item-top3': index < 3 }]"
+            >
+              <div class="ranking-left">
+                <span :class="['ranking-badge', 'ranking-badge-' + Math.min(index + 1, 4)]">
+                  {{ index + 1 }}
+                </span>
+                <div class="ranking-info">
+                  <el-link :underline="false" class="ranking-name" @click="goToCustomerDetail(item)">
+                    {{ item.nickname }}
+                  </el-link>
+                  <div class="ranking-meta">
+                    <span>{{ item.orderCount }}单</span>
+                    <span class="ranking-sep">|</span>
+                    <span>占比 {{ item.percentage }}%</span>
                   </div>
                 </div>
               </div>
-              <div class="reminder-actions">
-                <el-button size="small" plain @click="goToCustomer(item)">去处理</el-button>
-                <el-button size="small" plain class="btn-reached" @click="markReached(item)">已触达</el-button>
+              <div class="ranking-right">
+                <div class="ranking-amount">¥{{ formatAmount(item.totalSpend) }}</div>
+                <div class="ranking-time">{{ item.lastOrderTime ? item.lastOrderTime.slice(0, 10) : '-' }}</div>
               </div>
             </div>
           </div>
@@ -168,7 +173,7 @@ import { useUserStore } from '@/store/user';
 import { getProfile } from '@/api/profile';
 import { getDashboardStats } from '@/api/dashboard';
 import { getTodos, createTodo, toggleTodo as apiToggleTodo } from '@/api/tools';
-import { getReminders, getCustomerList, handleReminder } from '@/api/customers';
+import { getSpendingRanking } from '@/api/customers';
 import OrderCalendar from '@/views/user/orders/OrderCalendar.vue';
 import { Plus, UploadFilled, UserFilled, Money, MagicStick, List } from '@element-plus/icons-vue';
 
@@ -177,29 +182,25 @@ const orderStatus = ref('在线接单');
 const orderStatusTag = ref('success');
 const todayStats = ref<any>({});
 const todos = ref<any[]>([]);
-const reminders = ref<any[]>([]);
+const spendingRanking = ref<any[]>([]);
 const showTodoDialog = ref(false);
 const newTodoTitle = ref('');
 const router = useRouter();
-const customerMap = ref<Record<number, string>>({});
 
 onMounted(async () => {
   try {
-    const [profileRes, statsRes, todoRes, remindRes, custRes] = await Promise.all([
+    const [profileRes, statsRes, todoRes, rankRes] = await Promise.all([
       getProfile(),
       getDashboardStats(),
       getTodos(0),
-      getReminders(0),
-      getCustomerList(),
+      getSpendingRanking(),
     ]);
     const profile: any = profileRes;
     const statusMap: Record<number, string> = { 1: '在线接单', 2: '休息中', 3: '通宵接单', 4: '仅熟客' };
     orderStatus.value = statusMap[profile.data?.orderStatus] || '在线接单';
     todayStats.value = (statsRes as any).data || {};
     todos.value = (todoRes as any).data || [];
-    reminders.value = (remindRes as any).data || [];
-    const customers: any[] = (custRes as any).data || [];
-    customers.forEach(c => { customerMap.value[c.id] = c.nickname; });
+    spendingRanking.value = (rankRes as any).data || [];
   } catch (e) {
     console.warn('Dashboard 数据加载失败', e);
   }
@@ -218,33 +219,13 @@ async function handleCreateTodo() {
   todos.value = res.data || [];
 }
 
-function getCustomerName(id: number): string {
-  return customerMap.value[id] || `客户#${id}`;
+function goToCustomerDetail(item: any) {
+  router.push(`/customers/${item.customerId}`);
 }
 
-function getRemainingDays(item: any): number {
-  if (!item.remindTime) return 0;
-  const now = new Date();
-  const remind = new Date(item.remindTime);
-  const diff = remind.getTime() - now.getTime();
-  return Math.round(diff / 86400000);
-}
-
-function getDaysText(item: any): string {
-  const days = getRemainingDays(item);
-  if (days > 0) return `${days}天后`;
-  if (days === 0) return '今天';
-  return `逾期${Math.abs(days)}天`;
-}
-
-function goToCustomer(item: any) {
-  const name = getCustomerName(item.customerId);
-  router.push(`/customers?keyword=${encodeURIComponent(name)}`);
-}
-
-async function markReached(item: any) {
-  await handleReminder(item.id);
-  reminders.value = reminders.value.filter((r: any) => r.id !== item.id);
+function formatAmount(amount: any): string {
+  if (amount === null || amount === undefined) return '0.00';
+  return Number(amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 </script>
 
@@ -398,7 +379,7 @@ async function markReached(item: any) {
 }
 
 /* ===== 待办 ===== */
-.todo-card, .reminder-card {
+.todo-card, .ranking-card {
   height: 100%;
 }
 
@@ -430,79 +411,105 @@ async function markReached(item: any) {
   color: #C4B0CC;
 }
 
-/* ===== 回访提醒 ===== */
-.reminder-item {
-  padding: 14px 0;
+/* ===== 消费排行榜 ===== */
+.ranking-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(232, 130, 154, 0.08);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(232, 130, 154, 0.06);
+  transition: background 0.2s ease;
 }
 
-.reminder-item:last-child {
+.ranking-item:last-child {
   border-bottom: none;
 }
 
-.reminder-info {
+.ranking-item:hover {
+  background: rgba(232, 130, 154, 0.03);
+}
+
+.ranking-item-top3 .ranking-badge {
+  font-weight: 700;
+}
+
+.ranking-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 
-.reminder-avatar {
-  background: rgba(232, 130, 154, 0.1);
-  color: #E8789A;
-  flex-shrink: 0;
-}
-
-.reminder-text {
+.ranking-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  color: #A890B0;
+  background: rgba(200, 180, 210, 0.15);
 }
 
-.reminder-customer {
+.ranking-badge-1 {
+  color: #d4a017;
+  background: rgba(212, 160, 23, 0.12);
+}
+
+.ranking-badge-2 {
+  color: #8a8a8a;
+  background: rgba(138, 138, 138, 0.12);
+}
+
+.ranking-badge-3 {
+  color: #cd7f32;
+  background: rgba(205, 127, 50, 0.12);
+}
+
+.ranking-info {
+  min-width: 0;
+}
+
+.ranking-name {
   font-size: 14px;
   font-weight: 500;
   color: #5D4E6D;
 }
 
-.reminder-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.reminder-days {
-  font-size: 12px;
+.ranking-meta {
+  font-size: 11px;
   color: #A890B0;
-}
-
-.reminder-today {
-  color: #e6a23c;
-  font-weight: 600;
-}
-
-.reminder-overdue {
-  color: #f56c6c;
-  font-weight: 600;
-}
-
-.reminder-actions {
+  margin-top: 2px;
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
 }
 
-.btn-reached {
-  transition: all 0.2s ease;
+.ranking-sep {
+  color: #d0c0d8;
 }
-.btn-reached:hover {
-  color: #67c23a !important;
-  border-color: #67c23a !important;
-  background: rgba(103, 194, 58, 0.04) !important;
+
+.ranking-right {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.ranking-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #E8789A;
+  white-space: nowrap;
+}
+
+.ranking-time {
+  font-size: 11px;
+  color: #C4B0CC;
+  margin-top: 1px;
 }
 
 .empty-state {

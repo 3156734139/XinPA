@@ -55,19 +55,9 @@ export function cancelCoupon(id: number) {
   return request.delete(`/customers/coupons/${id}`);
 }
 
-/** 回访提醒列表 */
-export function getReminders(status?: number) {
-  return request.get('/customers/reminders', { params: { status } });
-}
-
-/** 处理回访 */
-export function handleReminder(id: number) {
-  return request.post(`/customers/reminders/${id}/handle`);
-}
-
-/** 忽略回访 */
-export function ignoreReminder(id: number) {
-  return request.post(`/customers/reminders/${id}/ignore`);
+/** 客户消费排行榜 */
+export function getSpendingRanking() {
+  return request.get('/customers/spending-ranking');
 }
 
 /** 获取 VIP 等级配置 */

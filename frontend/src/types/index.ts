@@ -142,18 +142,6 @@ export interface TodoItem {
   createdAt: string;
 }
 
-/** 回访提醒 */
-export interface FollowUpReminder {
-  id: number;
-  userId: number;
-  customerId: number;
-  orderId: number;
-  remindType: number;
-  remindTime: string;
-  status: number;
-  createdAt: string;
-}
-
 /** 人设主页 */
 export interface UserProfile {
   id: number;

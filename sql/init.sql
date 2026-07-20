@@ -152,19 +152,6 @@ CREATE TABLE customer (
     INDEX idx_blacklist (user_id, is_blacklist)
 ) ENGINE=InnoDB COMMENT='客户档案';
 
-CREATE TABLE follow_up_reminder (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '陪玩用户ID',
-    customer_id     BIGINT       NOT NULL COMMENT '客户ID',
-    order_id        BIGINT       DEFAULT NULL COMMENT '关联订单ID',
-    remind_type     TINYINT      NOT NULL COMMENT '类型: 1下单3天 2下单7天 3生日 4版本更新',
-    remind_time     DATETIME     NOT NULL COMMENT '提醒时间',
-    ai_greeting     TEXT         COMMENT 'AI生成问候话术',
-    status          TINYINT      NOT NULL DEFAULT 0 COMMENT '0待处理 1已处理 2已忽略',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_remind (user_id, remind_time)
-) ENGINE=InnoDB COMMENT='回访提醒';
-
 -- ==================== 订单管理 ====================
 
 CREATE TABLE `order` (
