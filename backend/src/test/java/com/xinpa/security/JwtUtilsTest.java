@@ -6,16 +6,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * JwtUtils 单元测试
  */
+@ExtendWith(MockitoExtension.class)
 class JwtUtilsTest {
 
     private JwtUtils jwtUtils;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
 
     @BeforeEach
     void setUp() {
@@ -23,17 +30,17 @@ class JwtUtilsTest {
         // 使用固定密钥（至少256位 = 32字符）
         props.setSecret("ThisIsATestSecretKeyForJWTHmacSha256!");
         props.setExpiration(3600000L); // 1小时
-        jwtUtils = new JwtUtils(props);
+        jwtUtils = new JwtUtils(props, stringRedisTemplate);
     }
 
     @Test
     @DisplayName("生成和解析Token")
     void generateAndParse() {
-        String token = jwtUtils.generateToken(100L, "testuser", "USER");
+        String token = jwtUtils.generateToken(100L, "USER");
         assertNotNull(token);
 
         Claims claims = jwtUtils.parseToken(token);
-        assertEquals("testuser", claims.getSubject());
+        assertEquals("100", claims.getSubject());
         assertEquals(100L, claims.get("userId", Long.class).longValue());
         assertEquals("USER", claims.get("userType", String.class));
     }
@@ -41,7 +48,7 @@ class JwtUtilsTest {
     @Test
     @DisplayName("有效Token验证")
     void validToken() {
-        String token = jwtUtils.generateToken(100L, "testuser", "USER");
+        String token = jwtUtils.generateToken(100L, "USER");
         assertTrue(jwtUtils.isTokenValid(token));
     }
 
@@ -54,8 +61,8 @@ class JwtUtilsTest {
     @Test
     @DisplayName("不同用户生成不同Token")
     void differentUsers() {
-        String token1 = jwtUtils.generateToken(100L, "user1", "USER");
-        String token2 = jwtUtils.generateToken(200L, "user2", "ADMIN");
+        String token1 = jwtUtils.generateToken(100L, "USER");
+        String token2 = jwtUtils.generateToken(200L, "ADMIN");
 
         Claims c1 = jwtUtils.parseToken(token1);
         Claims c2 = jwtUtils.parseToken(token2);

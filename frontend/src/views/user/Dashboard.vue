@@ -9,15 +9,12 @@
               <h3>欢迎回来，{{ userStore.userInfo?.nickname || '用户' }}</h3>
               <p>今日又是元气满满的一天 ~</p>
             </div>
-            <div class="welcome-status">
-              <el-tag
-                :type="orderStatusTag === '在线' ? 'success' : 'warning'"
-                size="large"
-                effect="dark"
-                round
-              >
-                当前状态：{{ orderStatus }}
-              </el-tag>
+            <div class="welcome-summary">
+              <span class="summary-text">
+                今天已接 <b>{{ todayStats.todayOrders ?? 0 }}</b> 单，
+                入账 <b>¥{{ todayStats.todayIncome || '0.00' }}</b>，
+                {{ todayStats.todayOrders > 0 ? '状态不错哦 ~' : '今天还没有订单哦 ~' }}
+              </span>
             </div>
           </div>
         </el-card>
@@ -36,116 +33,63 @@
             <el-button :icon="UploadFilled" class="quick-btn quick-btn-material" @click="$router.push('/materials')">上传素材</el-button>
             <el-button :icon="UserFilled" class="quick-btn quick-btn-customer" @click="$router.push('/customers')">客户管理</el-button>
             <el-button :icon="Money" class="quick-btn quick-btn-finance" @click="$router.push('/finance')">记账</el-button>
-            <el-button :icon="MagicStick" class="quick-btn quick-btn-ai" @click="$router.push('/ai')">AI工具</el-button>
           </div>
         </el-card>
       </el-col>
 
-      <!-- 今日统计 -->
-      <el-col :xs="24" :sm="8" class="mb-20">
-        <el-card shadow="never" class="stat-card-wrapper">
-          <div class="stat-card-inner">
-            <div class="stat-icon stat-icon-income">
-              <el-icon :size="24"><Money /></el-icon>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">{{ todayStats.todayIncome || '0.00' }}</div>
-              <div class="stat-label">今日收入（元）</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="8" class="mb-20">
-        <el-card shadow="never" class="stat-card-wrapper">
-          <div class="stat-card-inner">
-            <div class="stat-icon stat-icon-orders">
-              <el-icon :size="24"><List /></el-icon>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">{{ todayStats.todayOrders ?? 0 }}</div>
-              <div class="stat-label">今日订单</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="8" class="mb-20">
-        <el-card shadow="never" class="stat-card-wrapper">
-          <div class="stat-card-inner">
-            <div class="stat-icon stat-icon-customers">
-              <el-icon :size="24"><UserFilled /></el-icon>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">{{ todayStats.totalCustomers ?? 0 }}</div>
-              <div class="stat-label">客户总数</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+      <!-- 快捷操作已经在了，不需要统计卡片 -->
+    </el-row>
 
-      <!-- 待办事项 -->
-      <el-col :xs="24" :md="12" class="mb-20">
-        <el-card shadow="never" class="todo-card">
-          <template #header>
-            <div class="card-header">
-              <span>待办事项 · 努力工作中 ♡</span>
-              <el-button text size="small" @click="showTodoDialog = true">新建待办</el-button>
-            </div>
-          </template>
-          <div v-if="todos.length === 0" class="empty-state">
-            <el-empty description="暂无待办事项" :image-size="80" />
+    <!-- AI + 待办/排行榜 等高二列 -->
+    <div class="equal-row">
+        <!-- AI 助理 -->
+        <div class="equal-col">
+          <div class="dashboard-chat">
+            <ChatView />
           </div>
-          <div class="scroll-list">
-            <div v-for="(item, index) in todos" :key="item.id" class="todo-item" :style="{ animationDelay: index * 0.08 + 's' }">
-              <el-checkbox :model-value="item.status === 1" @change="toggleTodo(item.id)" size="large">
-                <span :class="{ 'todo-done': item.status === 1 }">{{ item.title }}</span>
-              </el-checkbox>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        </div>
 
-      <!-- 客户消费排行榜 -->
-      <el-col :xs="24" :md="12" class="mb-20">
-        <el-card shadow="never" class="ranking-card">
-          <template #header>
-            <div class="card-header">
-              <span>客户消费排行榜</span>
-            </div>
-          </template>
-          <div v-if="spendingRanking.length === 0" class="empty-state">
-            <el-empty description="暂无客户数据" :image-size="80" />
-          </div>
-          <div class="scroll-list">
-            <div
-              v-for="(item, index) in spendingRanking"
-              :key="item.customerId"
-              :class="['ranking-item', { 'ranking-item-top3': index < 3 }]"
-            >
-              <div class="ranking-left">
-                <span :class="['ranking-badge', 'ranking-badge-' + Math.min(index + 1, 4)]">
-                  {{ index + 1 }}
-                </span>
-                <div class="ranking-info">
-                  <el-link :underline="false" class="ranking-name" @click="goToCustomerDetail(item)">
-                    {{ item.nickname }}
-                  </el-link>
-                  <div class="ranking-meta">
-                    <span>{{ item.orderCount }}单</span>
-                    <span class="ranking-sep">|</span>
-                    <span>占比 {{ item.percentage }}%</span>
-                  </div>
+        <!-- 待办事项 & 客户消费排行榜 -->
+        <div class="equal-col">
+          <div class="right-column">
+            <!-- 待办事项 -->
+            <el-card shadow="never" class="todo-card">
+              <template #header>
+                <div class="card-header">
+                  <span>待办事项 · 努力工作中 ♡</span>
+                  <el-button text size="small" @click="showTodoDialog = true">新建待办</el-button>
+                </div>
+              </template>
+              <div v-if="todos.length === 0" class="empty-state scroll-list">
+                <el-empty description="暂无待办事项" :image-size="80" />
+              </div>
+              <div v-else class="scroll-list">
+                <div v-for="(item, index) in todos" :key="item.id" class="todo-item" :style="{ animationDelay: index * 0.08 + 's' }">
+                  <el-checkbox :model-value="item.status === 1" @change="toggleTodo(item.id)" size="large">
+                    <span :class="{ 'todo-done': item.status === 1 }">{{ item.title }}</span>
+                  </el-checkbox>
                 </div>
               </div>
-              <div class="ranking-right">
-                <div class="ranking-amount">¥{{ formatAmount(item.totalSpend) }}</div>
-                <div class="ranking-time">{{ item.lastOrderTime ? item.lastOrderTime.slice(0, 10) : '-' }}</div>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+            </el-card>
 
-      <!-- 预约日历 -->
+            <!-- 客户消费排行榜 -->
+            <el-card shadow="never" class="ranking-card">
+              <template #header>
+                <div class="card-header">
+                  <span>老板消费排行榜 TOP10</span>
+                </div>
+              </template>
+              <div v-if="spendingRanking.length === 0" class="empty-state scroll-list">
+                <el-empty description="暂无客户数据" :image-size="60" />
+              </div>
+              <VChart v-else :option="chartOption" autoresize class="chart-container" />
+            </el-card>
+          </div>
+        </div>
+      </div>
+
+    <!-- 预约日历 -->
+    <el-row :gutter="20">
       <el-col :span="24" class="mb-20">
         <OrderCalendar />
       </el-col>
@@ -167,19 +111,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
-import { getProfile } from '@/api/profile';
 import { getDashboardStats } from '@/api/dashboard';
-import { getTodos, createTodo, toggleTodo as apiToggleTodo } from '@/api/tools';
+import { getTodos, createTodo, toggleTodo as apiToggleTodo } from '@/api/todos';
 import { getSpendingRanking } from '@/api/customers';
 import OrderCalendar from '@/views/user/orders/OrderCalendar.vue';
-import { Plus, UploadFilled, UserFilled, Money, MagicStick, List } from '@element-plus/icons-vue';
+import ChatView from '@/views/user/agent/ChatView.vue';
+import VChart from 'vue-echarts';
+import { use } from 'echarts/core';
+import { BarChart } from 'echarts/charts';
+import { GridComponent, TooltipComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import { Plus, UploadFilled, UserFilled, Money } from '@element-plus/icons-vue';
+
+use([BarChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 const userStore = useUserStore();
-const orderStatus = ref('在线接单');
-const orderStatusTag = ref('success');
 const todayStats = ref<any>({});
 const todos = ref<any[]>([]);
 const spendingRanking = ref<any[]>([]);
@@ -187,17 +136,69 @@ const showTodoDialog = ref(false);
 const newTodoTitle = ref('');
 const router = useRouter();
 
+const chartOption = computed(() => {
+  const names = [...spendingRanking.value].map(i => i.nickname).reverse();
+  const values = [...spendingRanking.value].map(i => Number(i.totalSpend)).reverse();
+  return {
+    tooltip: {
+      trigger: 'axis' as const,
+      axisPointer: { type: 'shadow' as const },
+      confine: true,
+      formatter: (params: any) => {
+        const p = params[0];
+        const item = spendingRanking.value[spendingRanking.value.length - 1 - p.dataIndex];
+        return `<b>${item.nickname}</b><br/>消费金额：¥${Number(item.totalSpend).toLocaleString()}<br/>下单：${item.orderCount}单<br/>占比：${item.percentage}%`;
+      },
+    },
+    grid: { left: 10, right: 100, top: 10, bottom: 10, containLabel: true },
+    xAxis: {
+      type: 'value' as const,
+      axisLabel: {
+        formatter: (v: number) => v >= 10000 ? `${(v / 10000).toFixed(1)}w` : `${v}`,
+        fontSize: 10,
+        color: '#A890B0',
+      },
+      splitLine: { lineStyle: { color: 'rgba(232,130,154,0.06)' } },
+    },
+    yAxis: {
+      type: 'category' as const,
+      data: names,
+      axisLabel: { fontSize: 12, fontWeight: 600, color: '#5D4E6D' },
+      axisLine: { show: false },
+      axisTick: { show: false },
+    },
+    series: [{
+      type: 'bar' as const,
+      data: values.map((v: number, i: number) => ({
+        value: v,
+        itemStyle: {
+          borderRadius: [0, 6, 6, 0],
+          color: `rgba(232,130,154,${0.4 + (i / values.length) * 0.5})`,
+        },
+      })),
+      barMaxWidth: 22,
+      barMinHeight: 4,
+      label: {
+        show: true,
+        position: 'right',
+        formatter: (params: any) => {
+          const item = spendingRanking.value[spendingRanking.value.length - 1 - params.dataIndex];
+          return `¥${Number(item.totalSpend).toLocaleString()}`;
+        },
+        fontSize: 11,
+        color: '#5D4E6D',
+      },
+    }],
+  };
+});
+
 onMounted(async () => {
   try {
-    const [profileRes, statsRes, todoRes, rankRes] = await Promise.all([
-      getProfile(),
+    const [statsRes, todoRes, rankRes] = await Promise.all([
       getDashboardStats(),
       getTodos(0),
       getSpendingRanking(),
     ]);
-    const profile: any = profileRes;
-    const statusMap: Record<number, string> = { 1: '在线接单', 2: '休息中', 3: '通宵接单', 4: '仅熟客' };
-    orderStatus.value = statusMap[profile.data?.orderStatus] || '在线接单';
     todayStats.value = (statsRes as any).data || {};
     todos.value = (todoRes as any).data || [];
     spendingRanking.value = (rankRes as any).data || [];
@@ -208,6 +209,8 @@ onMounted(async () => {
 
 async function toggleTodo(id: number) {
   await apiToggleTodo(id);
+  const res: any = await getTodos(0);
+  todos.value = res.data || [];
 }
 
 async function handleCreateTodo() {
@@ -219,14 +222,6 @@ async function handleCreateTodo() {
   todos.value = res.data || [];
 }
 
-function goToCustomerDetail(item: any) {
-  router.push(`/customers/${item.customerId}`);
-}
-
-function formatAmount(amount: any): string {
-  if (amount === null || amount === undefined) return '0.00';
-  return Number(amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 </script>
 
 <style scoped>
@@ -261,6 +256,17 @@ function formatAmount(amount: any): string {
   color: rgba(93, 78, 109, 0.6);
   font-size: 14px;
   margin: 0;
+}
+
+.welcome-summary {
+  text-align: right;
+}
+.summary-text {
+  font-size: 14px;
+  color: #5D4E6D;
+}
+.summary-text b {
+  color: #E8789A;
 }
 
 /* ===== 卡片头部 ===== */
@@ -308,93 +314,70 @@ function formatAmount(amount: any): string {
   background: linear-gradient(135deg, #7fa3e0, #a3bef0) !important;
 }
 
-.quick-btn-ai {
-  background: linear-gradient(135deg, #b088d6, #ccaceb) !important;
+/* ===== 等高二列布局 ===== */
+.equal-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.equal-col {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+  height: calc(100vh - 360px);
+}
+.equal-col .dashboard-chat {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+.equal-col .dashboard-chat :deep(.chat-page) {
+  border-radius: 0;
+}
+.equal-col .dashboard-chat :deep(.chat-container) {
+  border-radius: 0;
 }
 
-/* ===== 统计卡片 ===== */
-.stat-card-wrapper {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
+/* ===== 右侧列（待办 + 排行榜） ===== */
+.right-column {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   overflow: hidden;
 }
 
-.stat-card-wrapper:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 28px rgba(232, 130, 154, 0.15) !important;
-}
-
-.stat-card-wrapper:hover .stat-icon {
-  transform: scale(1.1) rotate(4deg);
-}
-
-.stat-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 4px 0;
-}
-
-.stat-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.stat-icon-income {
-  background: rgba(232, 130, 154, 0.1);
-  color: #E8789A;
-}
-
-.stat-icon-orders {
-  background: rgba(123, 196, 127, 0.1);
-  color: #7BC47F;
-}
-
-.stat-icon-customers {
-  background: rgba(240, 176, 112, 0.1);
-  color: #F0B070;
-}
-
-.stat-body {
+.right-column .el-card {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.stat-value {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #5D4E6D;
+.right-column .el-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.stat-label {
-  font-size: 13px;
-  color: #A890B0;
-  margin-top: 2px;
-}
-
-/* ===== 待办 ===== */
-.todo-card, .ranking-card {
-  height: 100%;
-}
-
-.scroll-list {
-  max-height: 300px;
+.right-column .scroll-list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
-.scroll-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.scroll-list::-webkit-scrollbar-thumb {
-  background: #E8789A;
-  border-radius: 2px;
+.chart-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .todo-item {
@@ -409,107 +392,6 @@ function formatAmount(amount: any): string {
 .todo-done {
   text-decoration: line-through;
   color: #C4B0CC;
-}
-
-/* ===== 消费排行榜 ===== */
-.ranking-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(232, 130, 154, 0.06);
-  transition: background 0.2s ease;
-}
-
-.ranking-item:last-child {
-  border-bottom: none;
-}
-
-.ranking-item:hover {
-  background: rgba(232, 130, 154, 0.03);
-}
-
-.ranking-item-top3 .ranking-badge {
-  font-weight: 700;
-}
-
-.ranking-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-}
-
-.ranking-badge {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
-  color: #A890B0;
-  background: rgba(200, 180, 210, 0.15);
-}
-
-.ranking-badge-1 {
-  color: #d4a017;
-  background: rgba(212, 160, 23, 0.12);
-}
-
-.ranking-badge-2 {
-  color: #8a8a8a;
-  background: rgba(138, 138, 138, 0.12);
-}
-
-.ranking-badge-3 {
-  color: #cd7f32;
-  background: rgba(205, 127, 50, 0.12);
-}
-
-.ranking-info {
-  min-width: 0;
-}
-
-.ranking-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #5D4E6D;
-}
-
-.ranking-meta {
-  font-size: 11px;
-  color: #A890B0;
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ranking-sep {
-  color: #d0c0d8;
-}
-
-.ranking-right {
-  text-align: right;
-  flex-shrink: 0;
-  margin-left: 12px;
-}
-
-.ranking-amount {
-  font-size: 15px;
-  font-weight: 700;
-  color: #E8789A;
-  white-space: nowrap;
-}
-
-.ranking-time {
-  font-size: 11px;
-  color: #C4B0CC;
-  margin-top: 1px;
 }
 
 .empty-state {

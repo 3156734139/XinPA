@@ -4,10 +4,8 @@ import com.xinpa.common.PageResult;
 import com.xinpa.common.Result;
 import com.xinpa.common.UserContext;
 import com.xinpa.dto.OrderQueryDTO;
-import com.xinpa.entity.Appointment;
 import com.xinpa.entity.Order;
 import com.xinpa.entity.PricePackage;
-import com.xinpa.service.AppointmentService;
 import com.xinpa.service.OrderService;
 import com.xinpa.service.PricePackageService;
 import jakarta.validation.Valid;
@@ -16,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 /**
  * 订单管理接口
@@ -27,7 +24,6 @@ import java.time.LocalDateTime;
 public class OrderController {
 
     private final OrderService orderService;
-    private final AppointmentService appointmentService;
     private final PricePackageService pricePackageService;
 
     /**
@@ -101,41 +97,5 @@ public class OrderController {
         order.setUserId(UserContext.getUserId());
         orderService.update(order);
         return Result.ok();
-    }
-
-    // ==================== 预约日历 ====================
-
-    @GetMapping("/appointments")
-    public Result<?> appointments(
-            @RequestParam(required = false) LocalDateTime start,
-            @RequestParam(required = false) LocalDateTime end) {
-        return Result.ok(appointmentService.listByDateRange(UserContext.getUserId(), start, end));
-    }
-
-    @PostMapping("/appointments")
-    public Result<Void> createAppointment(@RequestBody Appointment appointment) {
-        appointment.setUserId(UserContext.getUserId());
-        appointmentService.create(appointment);
-        return Result.ok();
-    }
-
-    @PutMapping("/appointments")
-    public Result<Void> updateAppointment(@RequestBody Appointment appointment) {
-        appointmentService.update(appointment);
-        return Result.ok();
-    }
-
-    @DeleteMapping("/appointments/{id}")
-    public Result<Void> deleteAppointment(@PathVariable Long id) {
-        appointmentService.delete(id, UserContext.getUserId());
-        return Result.ok();
-    }
-
-    @GetMapping("/appointments/conflict")
-    public Result<?> checkConflict(
-            @RequestParam LocalDateTime start,
-            @RequestParam LocalDateTime end,
-            @RequestParam(required = false) Long excludeId) {
-        return Result.ok(appointmentService.checkConflict(UserContext.getUserId(), start, end, excludeId));
     }
 }

@@ -3,12 +3,18 @@ import { ref } from 'vue';
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '');
+  const refreshToken = ref(localStorage.getItem('refreshToken') || '');
   const userInfo = ref<any>(null);
   const userType = ref(localStorage.getItem('userType') || 'USER');
 
   function setToken(val: string) {
     token.value = val;
     localStorage.setItem('token', val);
+  }
+
+  function setRefreshToken(val: string) {
+    refreshToken.value = val;
+    localStorage.setItem('refreshToken', val);
   }
 
   function setUserInfo(info: any) {
@@ -23,11 +29,13 @@ export const useUserStore = defineStore('user', () => {
 
   function logout() {
     token.value = '';
+    refreshToken.value = '';
     userInfo.value = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userInfo');
     localStorage.removeItem('userType');
   }
 
-  return { token, userInfo, userType, setToken, setUserInfo, setUserType, logout };
+  return { token, refreshToken, userInfo, userType, setToken, setRefreshToken, setUserInfo, setUserType, logout };
 });

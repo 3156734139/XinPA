@@ -21,9 +21,6 @@ public interface StatsMapper {
     @Select("SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND member_type = 1")
     long countVipUsers();
 
-    @Select("SELECT template_type, COUNT(*) as count FROM user_profile GROUP BY template_type")
-    List<Map<String, Object>> countByTemplateType();
-
     @Select("SELECT package_type, COUNT(*) as count FROM price_package WHERE deleted = 0 GROUP BY package_type")
     List<Map<String, Object>> countByPackageType();
 

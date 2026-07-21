@@ -42,7 +42,7 @@ export interface Order {
   title: string;
   status: number;
   unitPrice: number;
-  plannedHours: number;
+  billedMinutes: number;
   actualMinutes: number;
   extraMinutes: number;
   totalAmount: number;
@@ -118,19 +118,6 @@ export interface PricePackage {
   totalRevenue?: number;
 }
 
-/** 预约 */
-export interface Appointment {
-  id: number;
-  userId: number;
-  customerId: number;
-  title: string;
-  startTime: string;
-  endTime: string;
-  remark: string;
-  status: number;
-  createdAt: string;
-}
-
 /** 待办事项 */
 export interface TodoItem {
   id: number;
@@ -142,29 +129,13 @@ export interface TodoItem {
   createdAt: string;
 }
 
-/** 人设主页 */
-export interface UserProfile {
-  id: number;
-  userId: number;
-  nickname: string;
-  avatar: string;
-  introduction: string;
-  orderStatus: number;
-  templateType: number;
-  games: string;
-  ranks: string;
-  positions: string;
-  createdAt: string;
-}
-
 /** 素材 */
 export interface Material {
   id: number;
   userId: number;
   name: string;
-  type: number;
-  url: string;
-  thumbnailUrl: string;
+  materialType: string;
+  fileUrl: string;
   fileSize: number;
   watermark: number;
   createdAt: string;

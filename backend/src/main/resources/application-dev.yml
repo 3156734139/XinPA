@@ -1,0 +1,9 @@
+# 开发环境配置 — 启用 SQL 日志
+spring:
+  devtools:
+    restart:
+      enabled: true
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

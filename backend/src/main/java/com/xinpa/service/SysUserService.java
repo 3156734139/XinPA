@@ -8,9 +8,9 @@ import com.xinpa.entity.SysUser;
 public interface SysUserService {
 
     /**
-     * 根据用户名查询
+     * 根据手机号查询
      */
-    SysUser getByUsername(String username);
+    SysUser getByPhone(String phone);
 
     /**
      * 根据ID查询
@@ -18,9 +18,9 @@ public interface SysUserService {
     SysUser getById(Long id);
 
     /**
-     * 注册
+     * 注册（手机号+验证码）
      */
-    void register(String username, String password, String nickname);
+    SysUser registerByPhone(String phone, String nickname, String password);
 
     /**
      * 更新最后登录时间

@@ -84,8 +84,8 @@
             v-model:current="query.current"
             v-model:page-size="query.size"
             :total="recordTotal"
-            layout="prev, pager, next"
-            class="mt-16"
+            :page-sizes="[5, 10, 20]"
+            layout="total, sizes, prev, pager, next"
             @change="loadRecords"
           />
         </el-card>
@@ -217,7 +217,7 @@ const targetEditExpense = ref(0);
 
 const paymentMethods = ref<any[]>([]);
 const paymentMethodMap = ref<Record<number, string>>({});
-const query = reactive({ type: undefined as number | undefined, current: 1, size: 10 });
+const query = reactive({ type: undefined as number | undefined, current: 1, size: 5 });
 const createForm = reactive({ recordType: 1, category: '', amount: 0, paymentMethodId: undefined as number | undefined, recordDate: '' });
 
 const trendMode = ref('week');
@@ -359,7 +359,21 @@ async function handleDelete(id: number) {
 .target-label { font-size: 14px; color: #666; margin-bottom: 8px; }
 .left-col, .right-col { display: flex; }
 .left-col { flex-direction: column; }
-.left-col > .el-card { flex: 1; }
+.left-col > .el-card { flex: 1; display: flex; flex-direction: column; }
+.left-col > .el-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.left-col > .el-card :deep(.el-card__body) .el-table {
+  flex: 1;
+  min-height: 0;
+}
+.left-col > .el-card :deep(.el-card__body) .el-pagination {
+  margin-top: auto;
+  padding-top: 16px;
+}
 .right-col { flex-direction: column; gap: 12px; }
 .right-col > .el-card { margin-bottom: 0; }
 .trend-card { flex: 1; display: flex; flex-direction: column; }

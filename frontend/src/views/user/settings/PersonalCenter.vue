@@ -29,13 +29,15 @@
             </div>
             <input
               ref="fileInputRef"
-             
+              type="file"
               accept="image/*"
               style="display:none"
               @change="handleFileChange"
             />
             <h3 class="user-nickname">{{ userStore.userInfo?.nickname || '用户' }}</h3>
-            <p class="user-username">@{{ userStore.userInfo?.username || '' }}</p>
+            <div class="user-days" v-if="userStore.userInfo?.createdAt">
+              已使用星助手 {{ calcDays(userStore.userInfo.createdAt) }} 天
+            </div>
           </div>
 
           <!-- 账号信息 -->
@@ -86,7 +88,8 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="手机号" prop="phone">
-                  <el-input v-model="profileForm.phone" placeholder="选填" maxlength="20" />
+                  <el-input v-model="profileForm.phone" placeholder="选填" maxlength="20" :disabled="!!profileForm.phone" />
+                  <div v-if="profileForm.phone" class="form-tip">手机号绑定后不可修改</div>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -123,10 +126,11 @@
                 <el-form-item label="当前密码" prop="oldPassword">
                   <el-input
                     v-model="passwordForm.oldPassword"
-                   
-                    placeholder="输入当前密码"
+
+                    placeholder="如未设置密码则留空"
                     show-password
                   />
+                  <div class="form-tip">如注册时未设置密码，此项留空即可</div>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
@@ -166,7 +170,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/store/user';
-import { getUserInfo, updateUserInfo, changePassword, uploadAvatar } from '@/api/auth';
+import { getUserInfo, updateUserInfo, changePassword, getAvatarUploadToken, notifyAvatarComplete } from '@/api/auth';
 import { Camera, Edit, Lock } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
 import PixelSticker from '@/components/PixelSticker.vue';
@@ -186,7 +190,10 @@ const profileForm = reactive({
 });
 
 const profileRules = {
-  nickname: [{ max: 64, message: '最长64个字符', trigger: 'blur' }],
+  nickname: [
+    { min: 2, message: '昵称至少2个字', trigger: 'blur' },
+    { max: 6, message: '昵称最多6个字', trigger: 'blur' },
+  ],
 };
 
 const passwordForm = reactive({
@@ -196,7 +203,7 @@ const passwordForm = reactive({
 });
 
 const passwordRules = {
-  oldPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+  oldPassword: [{ max: 64, message: '最长64个字符', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 6, message: '至少6位', trigger: 'blur' },
@@ -236,6 +243,11 @@ function triggerUpload() {
   fileInputRef.value?.click();
 }
 
+function getFileExt(fileName: string): string {
+  const idx = fileName.lastIndexOf('.');
+  return idx >= 0 ? fileName.substring(idx) : '';
+}
+
 async function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -248,20 +260,73 @@ async function handleFileChange(event: Event) {
   };
   reader.readAsDataURL(file);
 
+  // 优先 STS 前端直传 OSS
   try {
-    const res: any = await uploadAvatar(file);
-    const url = res.data?.url;
-    if (url) {
-      userStore.setUserInfo({ ...userStore.userInfo, avatar: url });
-      avatarPreview.value = '';
-      ElMessage.success('头像更新成功');
-    }
-  } catch {
+    await doStsUpload(file);
+    ElMessage.success('头像更新成功');
+  } catch (e: any) {
+    console.error('=== 头像 OSS 上传失败 ===');
+    console.error('错误对象:', e);
+    console.error('错误消息:', e.message);
+    console.error('错误状态码:', e.status || e.statusCode);
+    console.error('错误请求ID:', e.requestId);
+    console.error('错误堆栈:', e.stack);
     avatarPreview.value = '';
-    ElMessage.error('头像上传失败');
+    ElMessage.error('头像上传失败: ' + (e.message || '未知错误'));
   }
 
   input.value = '';
+}
+
+/** STS 前端直传 OSS（使用原生 fetch + Web Crypto API，不依赖 ali-oss SDK） */
+async function doStsUpload(file: File): Promise<string> {
+  const tokenRes: any = await getAvatarUploadToken();
+  const creds = tokenRes.data;
+  const objectKey = creds.objectKey + getFileExt(file.name);
+
+  const url = `https://${creds.bucket}.${creds.region}.aliyuncs.com/${objectKey}`;
+  const date = new Date().toUTCString();
+  const contentType = file.type || 'application/octet-stream';
+
+  // OSS 签名要求：CanonicalizedOSSHeaders 按字典序排列
+  // Date 头浏览器自动添加，签名中必须包含 Date 值，同时通过 x-oss-date 传入规范头
+  const ossHeaders = `x-oss-date:${date}\nx-oss-security-token:${creds.securityToken}\n`;
+  const stringToSign = `PUT\n\n${contentType}\n${date}\n${ossHeaders}/${creds.bucket}/${objectKey}`;
+  const signature = await hmacSha1Base64(creds.accessKeySecret, stringToSign);
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `OSS ${creds.accessKeyId}:${signature}`,
+      'Content-Type': contentType,
+      'x-oss-date': date,
+      'x-oss-security-token': creds.securityToken,
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`OSS ${res.status} ${res.statusText}: ${text}`);
+  }
+
+  const notifyRes: any = await notifyAvatarComplete(objectKey);
+  const avatarUrl = notifyRes.data?.url;
+  if (avatarUrl) {
+    userStore.setUserInfo({ ...userStore.userInfo, avatar: avatarUrl });
+  }
+  return '';
+}
+
+/** Web Crypto API 计算 HMAC-SHA1 并返回 Base64 */
+async function hmacSha1Base64(secret: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-1' },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
 async function handleSaveProfile() {
@@ -304,6 +369,10 @@ async function handleChangePassword() {
   } finally {
     passwordSaving.value = false;
   }
+}
+
+function calcDays(createdAt: string): number {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000) + 1;
 }
 
 function formatTime(time: string | undefined | null): string {
@@ -408,13 +477,13 @@ function formatTime(time: string | undefined | null): string {
   font-size: 18px;
   font-weight: 700;
   color: #5D4E6D;
-  margin: 0 0 4px;
+  margin: 0 0 2px;
 }
 
-.user-username {
-  font-size: 13px;
-  color: #A890B0;
-  margin: 0;
+.user-days {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 2px;
 }
 
 /* 账号信息 */
@@ -477,6 +546,14 @@ function formatTime(time: string | undefined | null): string {
 
 .profile-form {
   max-width: 640px;
+}
+
+/* ===== 表单提示 ===== */
+.form-tip {
+  font-size: 12px;
+  color: #A890B0;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 @media (max-width: 768px) {

@@ -1,5 +1,9 @@
 package com.xinpa.security;
 
+import com.xinpa.filter.IpFilter;
+import com.xinpa.filter.RateLimitFilter;
+import com.xinpa.util.ChineseIpChecker;
+import com.xinpa.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +30,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimiter rateLimiter;
+    private final ChineseIpChecker chineseIpChecker;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -40,8 +46,20 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(ipFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public RateLimitFilter rateLimitFilter() {
+        return new RateLimitFilter(rateLimiter);
+    }
+
+    @Bean
+    public IpFilter ipFilter() {
+        return new IpFilter(chineseIpChecker);
     }
 
     @Bean

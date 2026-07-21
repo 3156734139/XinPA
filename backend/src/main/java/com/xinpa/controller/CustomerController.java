@@ -139,12 +139,20 @@ public class CustomerController {
     }
 
     /**
+     * 获取 VIP 等级配置列表
+     */
+    @GetMapping("/vip-configs")
+    public Result<List<VipLevel>> vipConfigs() {
+        return Result.ok(vipLevelService.listEnabled());
+    }
+
+    /**
      * 客户消费排行榜（按累计消费降序，取前20）
      */
     @GetMapping("/spending-ranking")
     public Result<List<Map<String, Object>>> spendingRanking() {
         Long userId = UserContext.getUserId();
-        List<Customer> customers = customerService.getSpendingRanking(userId, 20);
+        List<Customer> customers = customerService.getSpendingRanking(userId, 10);
         BigDecimal grandTotal = customers.stream()
                 .map(Customer::getTotalSpend)
                 .filter(Objects::nonNull)

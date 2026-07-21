@@ -136,7 +136,8 @@
         v-model:current="current"
         v-model:page-size="size"
         :total="total"
-        layout="prev, pager, next"
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next"
         class="mt-16"
         @change="loadList"
       />
@@ -144,7 +145,7 @@
 
     <!-- 创建/编辑客户弹窗 -->
     <el-dialog v-model="showDialog" :title="editId ? '编辑客户' : '添加客户'" width="500px">
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="120px">
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" placeholder="客户昵称" />
         </el-form-item>
@@ -162,7 +163,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="性格/爱好/雷点">
-          <el-input v-model="form.personality" :rows="2" placeholder="性格、兴趣爱好、雷点等" />
+          <el-input v-model="form.personality" placeholder="性格、兴趣爱好、雷点等" />
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.remark" :rows="2" />
@@ -193,9 +194,10 @@
         v-model:current="orderPage"
         v-model:page-size="orderPageSize"
         :total="orderTotal"
-        layout="prev, pager, next"
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next"
         class="mt-16"
-        @current-change="() => loadOrders(customerIdForOrders)"
+        @change="() => loadOrders(customerIdForOrders)"
       />
       <template #footer>
         <el-button @click="showOrders = false">关闭</el-button>
@@ -219,7 +221,7 @@ import PixelSticker from '@/components/PixelSticker.vue';
 const list = ref<any[]>([]);
 const total = ref(0);
 const current = ref(1);
-const size = ref(20);
+const size = ref(5);
 const showDialog = ref(false);
 const editId = ref<number | null>(null);
 const saving = ref(false);
@@ -240,7 +242,7 @@ const showOrders = ref(false);
 const orderList = ref<any[]>([]);
 const orderTotal = ref(0);
 const orderPage = ref(1);
-const orderPageSize = ref(10);
+const orderPageSize = ref(5);
 const loadingOrders = ref(false);
 const customerIdForOrders = ref(0);
 

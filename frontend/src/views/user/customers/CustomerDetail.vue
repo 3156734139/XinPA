@@ -33,7 +33,7 @@
             <el-tag v-else type="success">正常</el-tag>
           </el-descriptions-item>
           <el-descriptions-item v-if="customer.isBlacklist" label="拉黑原因">{{ customer.blacklistReason }}</el-descriptions-item>
-          <el-descriptions-item label="性格/雷点" :span="2">{{ customer.personality || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="性格/雷点" :span="2" label-class-name="no-wrap">{{ customer.personality || '-' }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ customer.remark || '-' }}</el-descriptions-item>
         </el-descriptions>
       </div>
@@ -162,4 +162,5 @@ onMounted(async () => {
 <style scoped>
 .header-bar { display: flex; justify-content: space-between; align-items: center; }
 .mt-16 { margin-top: 16px; }
+:deep(.no-wrap) { white-space: nowrap; }
 </style>

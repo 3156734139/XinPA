@@ -4,12 +4,6 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/showcase',
-      name: 'Showcase',
-      component: () => import('@/views/showcase/ShowcasePage.vue'),
-      meta: { title: '小兔酱 · 陪玩主页' },
-    },
-    {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/user/Login.vue'),
@@ -67,12 +61,6 @@ const router = createRouter({
           name: 'OrderDetail',
           component: () => import('@/views/user/orders/OrderDetail.vue'),
           meta: { title: '订单详情' },
-        },
-        {
-          path: 'appointments',
-          name: 'Appointments',
-          component: () => import('@/views/user/orders/AppointmentCalendar.vue'),
-          meta: { title: '预约日历' },
         },
         {
           path: 'customers',
@@ -164,7 +152,7 @@ router.beforeEach((to, from, next) => {
 
   const isAdminRoute = to.path.startsWith('/admin') && to.path !== '/admin/login';
   const isUserRoute = !to.path.startsWith('/admin');
-  const isPublicRoute = ['Showcase', 'Login', 'Register', 'AdminLogin'].includes(to.name as string);
+  const isPublicRoute = ['Login', 'Register', 'AdminLogin'].includes(to.name as string);
 
   if (isPublicRoute) {
     next();

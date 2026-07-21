@@ -30,12 +30,16 @@ public class Order {
     private Integer status;
     @NotNull(message = "单价不能为空")
     private BigDecimal unitPrice;
-    private BigDecimal plannedHours;
+    /** 计费时长(分钟)，创建时根据实际时长按规则折算 */
+    private Integer billedMinutes;
     private Integer actualMinutes;
     private Integer extraMinutes;
     /** 客户名称（非数据库字段，查询时填充） */
     @TableField(exist = false)
     private String customerName;
+    /** 是否应用VIP优惠（非数据库字段，前端控制） */
+    @TableField(exist = false)
+    private Boolean applyVipDiscount;
     private BigDecimal totalAmount;
     private BigDecimal discountAmount;
     private BigDecimal finalAmount;

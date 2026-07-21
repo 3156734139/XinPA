@@ -1,35 +1,96 @@
 <template>
   <div class="register-page">
-    <div class="login-bg">
-      <div class="bg-orb bg-orb-1"></div>
-      <div class="bg-orb bg-orb-2"></div>
-      <div class="bg-orb bg-orb-3"></div>
+    <!-- 背景 -->
+    <div class="bg-layer">
+      <div class="bg-shape bg-shape-1"></div>
+      <div class="bg-shape bg-shape-2"></div>
+      <div class="bg-grid"></div>
     </div>
-    <div class="register-card">
-      <div class="register-card-inner">
-        <div class="register-top">
-          <div class="brand-icon">♡</div>
-          <h2 class="title">注册陪玩账号</h2>
-          <p class="subtitle">加入陪玩星助手</p>
+
+    <div class="register-wrapper">
+      <!-- 左侧品牌区 -->
+      <div class="brand-section">
+        <div class="brand-content">
+          <div class="brand-logo">
+            <span class="logo-heart">♡</span>
+          </div>
+          <h1 class="brand-title">陪玩星助手</h1>
+          <p class="brand-desc">为陪玩从业者打造的<br>全栈业务管理平台</p>
         </div>
-        <el-form ref="formRef" :model="form" :rules="rules" size="large" @submit.prevent="handleRegister">
-          <el-form-item prop="username">
-            <el-input v-model="form.username" placeholder="用户名（3-64位）" :prefix-icon="User" />
-          </el-form-item>
-          <el-form-item prop="nickname">
-            <el-input v-model="form.nickname" placeholder="昵称/艺名（选填）" :prefix-icon="Edit" />
-          </el-form-item>
-          <el-form-item prop="password">
-            <el-input v-model="form.password" placeholder="密码（6-64位）" :prefix-icon="Lock" show-password />
-          </el-form-item>
-          <el-form-item>
-            <el-button size="large" type="primary" :loading="loading" @click="handleRegister">
-              注册
-            </el-button>
-          </el-form-item>
-        </el-form>
-        <div class="links">
-          <router-link to="/login">已有账号？去登录</router-link>
+      </div>
+
+      <!-- 右侧注册区 -->
+      <div class="form-section">
+        <div class="form-card">
+          <div class="form-header">
+            <h2 class="form-title">创建账号</h2>
+            <p class="form-subtitle">注册后即可开始使用</p>
+          </div>
+
+          <!-- 错误提示 -->
+          <transition name="error-fade">
+            <div v-if="errorMsg" class="error-bar" :class="{ 'shake-active': shaking }">
+              <span>{{ errorMsg }}</span>
+            </div>
+          </transition>
+
+          <form @submit.prevent="handleRegister" class="register-form">
+            <!-- 手机号 -->
+            <div class="phone-input-wrap">
+              <div class="phone-region">+86</div>
+              <el-input
+                v-model="form.phone"
+                placeholder="手机号"
+                maxlength="11"
+                class="phone-input"
+                size="large"
+                @input="onPhoneInput"
+              />
+            </div>
+
+            <!-- 验证码 -->
+            <div class="code-input-wrap">
+              <el-input
+                v-model="form.code"
+                placeholder="验证码"
+                maxlength="6"
+                size="large"
+              />
+              <button
+                type="button"
+                class="code-btn"
+                :class="{ sending: codeCountdown > 0 }"
+                :disabled="codeSending || codeCountdown > 0"
+                @click="handleSendCode"
+              >
+                {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
+              </button>
+            </div>
+
+            <!-- 昵称 -->
+            <el-input
+              v-model="form.nickname"
+              placeholder="昵称 / 艺名（选填）"
+              size="large"
+            />
+
+            <!-- 密码 -->
+            <el-input
+              v-model="form.password"
+              placeholder="设置密码（选填，留空只能用验证码登录）"
+              show-password
+              size="large"
+            />
+
+            <button type="submit" class="submit-btn" :disabled="loading">
+              <span v-if="loading" class="btn-loading"></span>
+              <span v-else>注册</span>
+            </button>
+          </form>
+
+          <div class="form-footer">
+            <router-link to="/login" class="footer-link">已有账号？去登录</router-link>
+          </div>
         </div>
       </div>
     </div>
@@ -37,189 +98,397 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { register } from '@/api/auth';
+import { useUserStore } from '@/store/user';
+import { register, sendSmsCode } from '@/api/auth';
 import { ElMessage } from 'element-plus';
-import { User, Lock, Edit } from '@element-plus/icons-vue';
-import type { FormInstance } from 'element-plus';
 
 const router = useRouter();
-const formRef = ref<FormInstance>();
+const userStore = useUserStore();
 const loading = ref(false);
-const form = reactive({ username: '', password: '', nickname: '' });
-const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 64, message: '长度3-64位', trigger: 'blur' },
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 64, message: '长度6-64位', trigger: 'blur' },
-  ],
-};
+const errorMsg = ref('');
+const shaking = ref(false);
+const codeSending = ref(false);
+const codeCountdown = ref(0);
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+const form = reactive({ phone: '', code: '', nickname: '', password: '' });
+
+function onPhoneInput() {
+  form.phone = form.phone.replace(/\D/g, '').slice(0, 11);
+}
+
+function showError(msg: string) {
+  errorMsg.value = msg;
+  shaking.value = true;
+  setTimeout(() => { shaking.value = false; }, 500);
+}
+
+async function handleSendCode() {
+  if (!form.phone || !/^1\d{10}$/.test(form.phone)) { showError('请输入正确的手机号'); return; }
+  codeSending.value = true;
+  try {
+    const res: any = await sendSmsCode(form.phone);
+    if (res.code !== 200) { showError(res.message || '发送失败'); return; }
+    ElMessage.success('验证码已发送');
+    codeCountdown.value = 60;
+    countdownTimer = setInterval(() => { codeCountdown.value--; if (codeCountdown.value <= 0 && countdownTimer) clearInterval(countdownTimer); }, 1000);
+  } catch (e: any) { showError(e?.response?.data?.message || '发送失败，请稍后重试'); }
+  finally { codeSending.value = false; }
+}
 
 async function handleRegister() {
-  const valid = await formRef.value?.validate().catch(() => false);
-  if (!valid) return;
-  loading.value = true;
+  if (!form.phone || !form.code) { showError('请填写手机号和验证码'); return; }
+  if (!/^1\d{10}$/.test(form.phone)) { showError('手机号格式不正确'); return; }
+  loading.value = true; errorMsg.value = '';
   try {
-    await register(form);
+    const res: any = await register({
+      phone: form.phone, code: form.code,
+      nickname: form.nickname || undefined,
+      password: form.password || undefined,
+    });
+    if (res.code !== 200) { showError(res.message || '注册失败'); return; }
+    userStore.setToken(res.data.token);
+    if (res.data.refreshToken) userStore.setRefreshToken(res.data.refreshToken);
+    userStore.setUserType('USER');
+    userStore.setUserInfo({ nickname: res.data.nickname });
     ElMessage.success('注册成功');
-    router.push('/login');
-  } finally {
-    loading.value = false;
-  }
+    router.push('/dashboard');
+  } catch (e: any) { showError(e?.response?.data?.message || '注册失败，请稍后重试'); }
+  finally { loading.value = false; }
 }
+
+onUnmounted(() => { if (countdownTimer) clearInterval(countdownTimer); });
 </script>
 
 <style scoped>
 .register-page {
   height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #FFF9FB 0%, #FFF5F7 30%, #FFF0F5 70%, #FFF9FB 100%);
+  background: #0F0A12;
 }
 
-/* 背景装饰 */
-.login-bg {
+.bg-layer {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
 
-.bg-orb {
+.bg-shape {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
+  filter: blur(120px);
 }
 
-.bg-orb-1 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, #FFD6E0, transparent);
-  top: -10%;
-  right: -5%;
+.bg-shape-1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(232, 120, 154, 0.15), transparent);
+  top: -200px; right: -100px;
 }
 
-.bg-orb-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #E8DFF5, transparent);
-  bottom: -10%;
-  left: -5%;
+.bg-shape-2 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(160, 120, 200, 0.12), transparent);
+  bottom: -150px; left: -100px;
 }
 
-.bg-orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, #FFE8EF, transparent);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.2;
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232, 120, 154, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 120, 154, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.register-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.brand-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+}
+
+.brand-content {
+  text-align: center;
+}
+
+.logo-heart {
+  font-size: 56px;
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(232, 120, 154, 0.3));
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-10px) rotate(6deg); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
-.register-card {
-  position: relative;
-  z-index: 1;
-  width: 420px;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-radius: 24px;
-  border: 1px solid rgba(232, 130, 154, 0.12);
-  padding: 3px;
-  box-shadow: 0 8px 40px rgba(232, 130, 154, 0.1);
-}
-
-.register-card-inner {
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 22px;
-  padding: 48px 40px 36px;
-}
-
-.register-top {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.brand-icon {
-  font-size: 40px;
-  color: #E8789A;
-  margin-bottom: 12px;
-}
-
-.title {
-  color: #5D4E6D;
-  font-size: 24px;
+.brand-title {
+  color: #fff;
+  font-size: 36px;
   font-weight: 700;
-  margin-bottom: 8px;
-  letter-spacing: 1px;
+  margin: 16px 0 8px;
+  letter-spacing: 2px;
 }
 
-.subtitle {
-  color: #A890B0;
+.brand-desc {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.form-section {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  padding: 40px 60px 40px 0;
+}
+
+.form-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 36px;
+}
+
+.form-header {
+  margin-bottom: 28px;
+}
+
+.form-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.form-subtitle {
+  color: rgba(255, 255, 255, 0.35);
   font-size: 14px;
+  margin: 0;
 }
 
-.links {
+/* 错误 */
+.error-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 108, 108, 0.1);
+  border: 1px solid rgba(245, 108, 108, 0.15);
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #FF6B6B;
+}
+
+.error-fade-enter-active, .error-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.error-fade-enter-from, .error-fade-leave-to {
+  opacity: 0; transform: translateY(-6px);
+}
+
+.shake-active { animation: shakeX 0.4s ease; }
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+/* 表单 */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.register-form :deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+  border-radius: 12px !important;
+  padding: 0 14px !important;
+}
+
+.register-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(232, 120, 154, 0.3) inset !important;
+}
+
+.register-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1.5px #E8789A inset !important;
+}
+
+.register-form :deep(.el-input__inner) {
+  color: #fff !important;
+  height: 44px !important;
+}
+
+.register-form :deep(.el-input__inner::placeholder) {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 手机号 */
+.phone-input-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.phone-region {
+  height: 44px;
+  line-height: 44px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.phone-input {
+  flex: 1;
+}
+
+:deep(.phone-input .el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+  border-radius: 0 12px 12px 0 !important;
+  padding: 0 14px !important;
+}
+
+:deep(.phone-input .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(232, 120, 154, 0.3) inset !important;
+}
+
+:deep(.phone-input .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1.5px #E8789A inset !important;
+}
+
+:deep(.phone-input .el-input__inner) {
+  color: #fff !important;
+  height: 44px !important;
+}
+
+:deep(.phone-input .el-input__inner::placeholder) {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 验证码 */
+.code-input-wrap {
+  display: flex;
+  gap: 10px;
+}
+
+.code-input-wrap :deep(.el-input__wrapper) {
+  border-radius: 12px !important;
+}
+
+.code-btn {
+  flex-shrink: 0;
+  width: 110px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 120, 154, 0.2);
+  background: rgba(232, 120, 154, 0.08);
+  color: #E8789A;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.code-btn:hover:not(:disabled) {
+  background: rgba(232, 120, 154, 0.15);
+  border-color: rgba(232, 120, 154, 0.35);
+}
+
+.code-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.code-btn.sending {
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* 提交 */
+.submit-btn {
+  width: 100%;
+  height: 46px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #E8789A, #D06080);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(232, 120, 154, 0.25);
+}
+
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-loading {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 底部 */
+.form-footer {
   text-align: center;
   margin-top: 20px;
-  font-size: 13px;
 }
 
-.links a {
-  color: #A890B0;
+.footer-link {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 13px;
   text-decoration: none;
   transition: color 0.2s;
   font-weight: 500;
 }
 
-.links a:hover {
-  color: #E8789A;
-}
+.footer-link:hover { color: #E8789A; }
 
-:deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.8) !important;
-  box-shadow: 0 0 0 1px rgba(232, 130, 154, 0.15) inset !important;
-}
-
-:deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px rgba(232, 130, 154, 0.3) inset !important;
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #E8789A inset !important;
-}
-
-:deep(.el-input__inner) {
-  color: #5D4E6D !important;
-}
-
-:deep(.el-input__inner::placeholder) {
-  color: #C4B0CC !important;
-}
-
-:deep(.el-input__prefix-inner) {
-  color: #C4B0CC !important;
-}
-
-@media (max-width: 480px) {
-  .register-card {
-    width: 92%;
-  }
-  .register-card-inner {
-    padding: 32px 24px 24px;
-  }
+/* 响应式 */
+@media (max-width: 900px) {
+  .brand-section { display: none; }
+  .form-section { width: 100%; padding: 20px; justify-content: center; }
+  .form-card { max-width: 420px; }
 }
 </style>

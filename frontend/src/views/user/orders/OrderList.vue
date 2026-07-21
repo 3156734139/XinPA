@@ -133,7 +133,8 @@
         v-model:current="query.current"
         v-model:page-size="query.size"
         :total="total"
-        layout="prev, pager, next"
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next"
         class="mt-16"
         @change="loadList"
       />
@@ -203,7 +204,7 @@
         <el-form-item v-if="actualMinutes > 0" label="实际时长">
           <span style="color:#666">{{ actualDuration }}</span>
         </el-form-item>
-        <el-form-item v-if="actualMinutes > 0" label="计费时长">
+        <el-form-item v-if="selectedPackageType === 1 && actualMinutes > 0" label="计费时长">
           <span style="color:#e8789a;font-weight:bold">{{ billableDuration }}</span>
         </el-form-item>
 
@@ -229,7 +230,7 @@
             <el-option
               v-for="pkg in packageList"
               :key="pkg.id"
-              :label="`${pkg.name} (¥${pkg.price}/${pkg.unit})`"
+              :label="`${pkg.name} (¥${pkg.price}/${getPackageUnitName(pkg)})`"
               :value="pkg.id"
             />
           </el-select>
@@ -245,11 +246,14 @@
           <span style="margin-left:4px;color:#999">%</span>
         </el-form-item>
 
-        <el-form-item v-if="currentVip" label="VIP折扣">
-          <span style="color:#e8789a;font-weight:bold">
-            {{ currentVip.name }} — {{ currentVip.discount }}折
-            <span style="font-weight:normal;color:#999;margin-left:4px">（自动减免 {{ (100 - currentVip.discount) }}%）</span>
-          </span>
+        <el-form-item v-if="currentVip" label="VIP优惠">
+          <div style="display:flex;align-items:center;gap:8px;width:100%">
+            <el-switch v-model="form.applyVipDiscount" />
+            <span style="color:#e8789a;font-weight:bold">
+              {{ currentVip.name }} — {{ currentVip.discount }}折
+            </span>
+            <span style="color:#999;font-size:13px">（减免 {{ (100 - currentVip.discount) }}%）</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="备注">
@@ -267,7 +271,7 @@
             <span class="summary-label">费用合计</span>
             <span class="summary-amount">¥{{ finalAmount.toFixed(2) }}</span>
             <span class="summary-parenthesis">
-              <template v-if="currentVip">
+              <template v-if="currentVip && form.applyVipDiscount">
                 （到手比例{{ form.settleRatio }}%，{{ currentVip.name }}打{{ currentVip.discount }}折 → ¥{{ finalAmount.toFixed(2) }}）
               </template>
               <template v-else>
@@ -286,14 +290,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { getOrders, createOrder, updateOrder } from '@/api/orders';
 import { getCustomerList } from '@/api/customers';
 import { getVipConfigs } from '@/api/customers';
-import { getPackages } from '@/api/profile';
+import { getPackages } from '@/api/packages';
 import { getEnabledSources } from '@/api/orderSource';
 import { getEnabledPaymentMethods } from '@/api/paymentMethod';
 import { formatDateTime, formatDuration } from '@/utils/format';
@@ -302,7 +306,7 @@ import PixelSticker from '@/components/PixelSticker.vue';
 
 /* ===== 类型 ===== */
 interface CustomerItem { id: number; nickname: string; contact: string; sourceId?: number; spendLevel?: number }
-interface PackageItem { id: number; name: string; price: number; unit: string }
+interface PackageItem { id: number; name: string; price: number; unit: string; packageType: number }
 interface SourceItem { id: number; name: string }
 interface PaymentMethodItem { id: number; name: string }
 
@@ -323,6 +327,14 @@ const vipConfigs = ref<any[]>([]);
 const startTimeVal = ref<string | null>(null);
 const endTimeVal = ref<string | null>(null);
 const formRef = ref<FormInstance>();
+const selectedPackageType = ref<number>(1); // 1=小时单, 其他=统一定价
+
+/** 根据套餐类型获取计价单位显示 */
+function getPackageUnitName(pkg: PackageItem): string {
+  if (pkg.packageType === 1) return pkg.unit || '小时';
+  const typeNames: Record<number, string> = { 2: '包夜', 3: '教学', 4: '月', 5: '次' };
+  return typeNames[pkg.packageType] || pkg.unit || '次';
+}
 
 const route = useRoute();
 
@@ -337,7 +349,7 @@ const query = reactive({
   minMinutes: undefined as number | undefined,
   maxMinutes: undefined as number | undefined,
   current: 1,
-  size: 20,
+  size: 5,
 });
 
 const form = reactive({
@@ -349,6 +361,7 @@ const form = reactive({
   customerId: undefined as number | undefined,
   selectedDate: null as string | null,
   remark: '',
+  applyVipDiscount: false,
 });
 
 const formRules: FormRules = {
@@ -409,9 +422,10 @@ const billableDuration = computed(() => {
   return `${hours}h${mins}min`;
 });
 
-/** 原始费用 */
+/** 原始费用：非小时单按统一定价，小时单按计费小时算 */
 const rawAmount = computed(() => {
   if (actualMinutes.value <= 0) return 0;
+  if (selectedPackageType.value !== 1) return form.unitPrice || 0;
   return calcBillableHours(actualMinutes.value) * (form.unitPrice || 0);
 });
 
@@ -422,12 +436,14 @@ const estimatedAmount = computed(() => {
   return rawAmount.value * ratio;
 });
 
-/** 最终金额（含到手比例 + VIP折扣） */
+/** 最终金额（含到手比例，可选VIP折扣） */
 const finalAmount = computed(() => {
   if (actualMinutes.value <= 0) return 0;
   const afterRatio = estimatedAmount.value;
-  if (!currentVip.value) return afterRatio;
-  return afterRatio * (currentVip.value.discount / 100);
+  if (currentVip.value && form.applyVipDiscount) {
+    return afterRatio * (currentVip.value.discount / 100);
+  }
+  return afterRatio;
 });
 
 /** 当前所选客户的VIP等级折扣 */
@@ -467,30 +483,19 @@ function onCustomerChange(val: number | undefined) {
 }
 
 function onPackageChange(val: number | undefined) {
-  if (!val) return;
+  if (!val) {
+    selectedPackageType.value = 1;
+    return;
+  }
   const pkg = packageList.value.find(p => p.id === val);
   if (pkg) {
     form.unitPrice = pkg.price;
+    selectedPackageType.value = pkg.packageType;
   }
 }
 
 onMounted(async () => {
-  // 从路由参数自动填充筛选条件（来自套餐管理点击跳转）
-  if (route.query.packageName) {
-    query.packageName = route.query.packageName as string;
-  }
   await Promise.all([loadList(), loadCustomers(), loadPackages(), loadSources(), loadPaymentMethods(), loadVipConfigs()]);
-});
-
-// 监听路由参数变化：点击侧栏 Tab 回到 /orders 时重置筛选条件
-watch(() => route.query.packageName, (newVal) => {
-  if (newVal !== undefined) {
-    query.packageName = newVal as string;
-  } else {
-    query.packageName = '';
-  }
-  query.current = 1;
-  loadList();
 });
 
 async function loadList() {
@@ -589,8 +594,10 @@ function resetForm() {
   form.customerId = undefined;
   form.selectedDate = null;
   form.remark = '';
+  form.applyVipDiscount = false;
   startTimeVal.value = null;
   endTimeVal.value = null;
+  selectedPackageType.value = 1;
 }
 
 function openCreate() {
@@ -608,6 +615,14 @@ function openEdit(row: any) {
   form.settleRatio = row.settleRatio ?? 100;
   form.customerId = row.customerId || undefined;
   form.remark = row.remark || '';
+
+  // 解析套餐类型
+  if (form.packageId) {
+    const pkg = packageList.value.find(p => p.id === form.packageId);
+    selectedPackageType.value = pkg ? pkg.packageType : 1;
+  } else {
+    selectedPackageType.value = 1;
+  }
 
   if (row.startTime) {
     const dt = new Date(row.startTime);
@@ -658,6 +673,7 @@ async function handleSave() {
     settleRatio: form.settleRatio,
     customerId: form.customerId || undefined,
     remark: form.remark,
+    applyVipDiscount: form.applyVipDiscount,
   };
 
   saving.value = true;

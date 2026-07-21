@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 public class UserInfoVO {
 
     private Long id;
-    private String username;
     private String nickname;
     private String avatar;
     private String phone;
@@ -19,4 +18,5 @@ public class UserInfoVO {
     private Integer memberType;
     private LocalDateTime memberExpire;
     private LocalDateTime lastLoginTime;
+    private LocalDateTime createdAt;
 }

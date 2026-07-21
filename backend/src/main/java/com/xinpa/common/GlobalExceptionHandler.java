@@ -44,6 +44,12 @@ public class GlobalExceptionHandler {
         return Result.fail(400, message);
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public Result<Void> handleRuntime(RuntimeException e) {
+        log.error("运行时异常", e);
+        return Result.fail(e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常", e);

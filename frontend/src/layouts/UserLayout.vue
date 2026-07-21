@@ -341,6 +341,13 @@ function handleCommand(command: string) {
   position: relative;
 }
 
+/* 页面容器约束高度 */
+.page-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
   .user-sidebar {

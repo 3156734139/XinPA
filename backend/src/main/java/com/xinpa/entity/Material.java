@@ -16,8 +16,7 @@ public class Material {
     private Long id;
     private Long userId;
     private String name;
-    /** 1截图 2语音 3短视频 */
-    private Integer materialType;
+    private MaterialType materialType;
     private String fileUrl;
     private Long fileSize;
     private Integer watermark;

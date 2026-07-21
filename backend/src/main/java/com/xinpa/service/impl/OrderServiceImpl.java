@@ -106,11 +106,13 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNo("XO" + LocalDateTime.now().format(FMT)
                 + String.format("%03X", SEQ.getAndIncrement() & 0xFFF));
 
-        // 自动填充套餐名称和标题
+        // 自动填充套餐名称和标题，并判断是否为统一定价（非小时单）
+        boolean flatRate = false;
         if (order.getPackageId() != null) {
             PricePackage pkg = pricePackageMapper.selectById(order.getPackageId());
             if (pkg != null) {
                 order.setPackageName(pkg.getName());
+                flatRate = pkg.getPackageType() != null && pkg.getPackageType() != 1;
             }
         }
         if (order.getTitle() == null || order.getTitle().isEmpty()) {
@@ -127,15 +129,24 @@ public class OrderServiceImpl implements OrderService {
         order.setIsOvernight(overnight ? 1 : 0);
 
         // 自动核算费用
-        double billableHours = calcBillableHours(minutes);
-        int extraMinutes = (int) (billableHours * 60) - minutes;
-        order.setExtraMinutes(extraMinutes);
+        if (flatRate) {
+            // 包夜/包月/教学/线下：统一定价，不计小时
+            order.setExtraMinutes(0);
+            order.setBilledMinutes(minutes);
+            order.setTotalAmount(order.getUnitPrice());
+        } else {
+            // 小时单或无套餐：按小时计费，15/45 分钟舍入
+            double billableHours = calcBillableHours(minutes);
+            int extraMinutes = (int) (billableHours * 60) - minutes;
+            order.setExtraMinutes(extraMinutes);
+            order.setBilledMinutes((int) (billableHours * 60));
 
-        BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
-        order.setTotalAmount(total);
+            BigDecimal total = order.getUnitPrice().multiply(BigDecimal.valueOf(billableHours));
+            order.setTotalAmount(total);
+        }
 
         BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
-        BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        BigDecimal afterRatio = order.getTotalAmount().multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         // 手动选择是否应用VIP折扣
         if (Boolean.TRUE.equals(order.getApplyVipDiscount())) {
@@ -179,17 +190,32 @@ public class OrderServiceImpl implements OrderService {
             order.setActualMinutes(minutes);
             order.setIsOvernight(overnight ? 1 : 0);
 
-            double billableHours = calcBillableHours(minutes);
-            int extraMinutes = (int) (billableHours * 60) - minutes;
-            order.setExtraMinutes(extraMinutes);
+            // 判断套餐是否为统一定价（非小时单）
+            Long pkgId = order.getPackageId() != null ? order.getPackageId() : existing.getPackageId();
+            boolean flatRate = false;
+            if (pkgId != null) {
+                PricePackage pkg = pricePackageMapper.selectById(pkgId);
+                flatRate = pkg != null && pkg.getPackageType() != null && pkg.getPackageType() != 1;
+            }
 
             BigDecimal unitPrice = order.getUnitPrice() != null ? order.getUnitPrice() : existing.getUnitPrice();
-            BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(billableHours));
-            order.setTotalAmount(total);
+
+            if (flatRate) {
+                order.setExtraMinutes(0);
+                order.setBilledMinutes(minutes);
+                order.setTotalAmount(unitPrice);
+            } else {
+                double billableHours = calcBillableHours(minutes);
+                int extraMinutes = (int) (billableHours * 60) - minutes;
+                order.setExtraMinutes(extraMinutes);
+                order.setBilledMinutes((int) (billableHours * 60));
+                BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(billableHours));
+                order.setTotalAmount(total);
+            }
 
             BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio()
                     : (existing.getSettleRatio() != null ? existing.getSettleRatio() : new BigDecimal("100"));
-            BigDecimal afterRatio = total.multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            BigDecimal afterRatio = order.getTotalAmount().multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
             BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount()
                     : (existing.getDiscountAmount() != null ? existing.getDiscountAmount() : BigDecimal.ZERO);
             // 手动选择是否应用VIP折扣

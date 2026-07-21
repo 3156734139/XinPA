@@ -36,14 +36,6 @@ public class AdminStatsController {
     }
 
     /**
-     * 各品类陪玩占比
-     */
-    @GetMapping("/template-ratio")
-    public Result<?> templateRatio() {
-        return Result.ok(statsService.getTemplateTypeRatio());
-    }
-
-    /**
      * 套餐类型占比
      */
     @GetMapping("/package-ratio")

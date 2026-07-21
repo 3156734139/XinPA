@@ -40,11 +40,6 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    public List<Map<String, Object>> getTemplateTypeRatio() {
-        return statsMapper.countByTemplateType();
-    }
-
-    @Override
     public List<Map<String, Object>> getPackageTypeRatio() {
         return statsMapper.countByPackageType();
     }

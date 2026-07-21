@@ -9,8 +9,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3307/xinpa?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: root
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
   data:
     redis:
       host: localhost
@@ -32,7 +32,7 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     db-config:
       logic-delete-field: deleted
@@ -42,15 +42,22 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: xinpa-secret-key-change-in-production-must-be-at-least-256-bits-long!!
-  expiration: 86400000  # 24小时
+  secret: ${JWT_SECRET}
+  expiration: 604800000  # 7天
 
-# MinIO 文件存储
-minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: xinpa
+# 阿里云 OSS 文件存储
+oss:
+  # 内网 Endpoint（后端专用，内网读写免费）
+  internal-endpoint: oss-cn-chengdu-internal.aliyuncs.com
+  # 公网 Endpoint（fallback）
+  public-endpoint: oss-cn-chengdu.aliyuncs.com
+  access-key-id: ${OSS_ACCESS_KEY_ID}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+  bucket: xinpa-bucket
+  # CDN 加速域名（为空则使用 OSS 公网 Endpoint）
+  cdn-domain: ""
+  # STS 临时凭证（RAM 角色 ARN，由用户填写）
+  role-arn: acs:ram::1161249642457898:role/oss-upload-role
 
 # 免费版限制
 member:
@@ -60,3 +67,17 @@ member:
 # 文件上传
 app:
   upload-dir: uploads/avatars
+
+# LLM Agent 配置（OpenAI 兼容接口）
+llm:
+  api-base-url: "https://api.deepseek.com"
+  api-key: "${LLM_API_KEY}"
+  model: "deepseek-v4-flash"
+
+# 阿里云号码认证-短信认证（未配置时自动降级为控制台输出）
+aliyun:
+  sms:
+    access-key-id: "${SMS_ACCESS_KEY_ID}"
+    access-key-secret: "${SMS_ACCESS_KEY_SECRET}"
+    sign-name: "云渚科技验证服务"
+    template-code: "100001"

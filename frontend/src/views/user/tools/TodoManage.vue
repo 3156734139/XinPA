@@ -62,7 +62,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { getTodos, createTodo, toggleTodo, deleteTodo } from '@/api/tools';
+import { getTodos, createTodo, toggleTodo, deleteTodo } from '@/api/todos';
 import PixelSticker from '@/components/PixelSticker.vue';
 
 const list = ref<any[]>([]);

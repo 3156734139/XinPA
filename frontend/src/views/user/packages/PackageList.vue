@@ -82,7 +82,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getPackages, addPackage, updatePackage, deletePackage } from '@/api/profile';
+import { getPackages, addPackage, updatePackage, deletePackage } from '@/api/packages';
 import { getEnabledPackageTypes } from '@/api/packageType';
 
 import PixelSticker from '@/components/PixelSticker.vue';

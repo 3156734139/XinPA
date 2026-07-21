@@ -19,11 +19,6 @@ public interface StatsService {
     List<Map<String, Object>> getUserGrowth();
 
     /**
-     * 各品类陪玩占比
-     */
-    List<Map<String, Object>> getTemplateTypeRatio();
-
-    /**
      * 套餐类型分布
      */
     List<Map<String, Object>> getPackageTypeRatio();

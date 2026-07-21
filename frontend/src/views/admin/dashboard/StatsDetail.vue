@@ -28,6 +28,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getOverview, getPackageRatio } from '@/api/admin';
+import { getEnabledPackageTypes } from '@/api/packageType';
 import VChart from 'vue-echarts';
 import { use } from 'echarts/core';
 import { PieChart } from 'echarts/charts';
@@ -42,14 +43,19 @@ const packageChartOption = ref({});
 const colorPalette = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 onMounted(async () => {
-  const [overviewRes, pkgRes] = await Promise.all([
+  const [overviewRes, pkgRes, typesRes] = await Promise.all([
     getOverview(),
     getPackageRatio(),
+    getEnabledPackageTypes(),
   ]);
   overview.value = (overviewRes as any).data || {};
 
+  // 动态构建套餐类型映射
+  const typeMap: Record<string, string> = {};
+  const types = (typesRes as any).data || [];
+  types.forEach((t: any) => { typeMap[t.id] = t.name; });
+
   const data = (pkgRes as any).data || [];
-  const typeMap: Record<string, string> = { '1': '小时单', '2': '包夜', '3': '教学', '4': '包月', '5': '线下' };
 
   packageChartOption.value = {
     tooltip: { trigger: 'item', formatter: '{b}: {c}个 ({d}%)' },
