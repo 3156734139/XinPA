@@ -58,7 +58,7 @@
           <el-table :data="records" stripe>
             <el-table-column label="类型" width="70">
               <template #default="{ row }">
-                <el-tag :type="row.recordType === 1 ? 'success' : 'danger'" :size="small">
+                <el-tag :type="row.recordType === 1 ? 'success' : 'danger'" size="small">
                   {{ row.recordType === 1 ? '收入' : '支出' }}
                 </el-tag>
               </template>

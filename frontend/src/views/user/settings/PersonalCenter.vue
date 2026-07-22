@@ -45,7 +45,7 @@
             <div class="info-divider"></div>
             <div class="info-row">
               <span class="info-label">会员类型</span>
-              <el-tag :size="small" effect="plain" round>
+              <el-tag size="small" effect="plain" round>
                 {{ userStore.userInfo?.memberType === 1 ? '付费会员' : '免费用户' }}
               </el-tag>
             </div>

@@ -94,7 +94,7 @@
         </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" :size="small" class="status-tag-pulse">{{ statusLabel(row.status) }}</el-tag>
+            <el-tag :type="statusType(row.status)" size="small" class="status-tag-pulse">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="客户" width="120">

@@ -183,7 +183,7 @@
         <el-table-column prop="finalAmount" label="实付金额" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :size="small">{{ statusLabel(row.status) }}</el-tag>
+            <el-tag size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="创建时间" width="160">
