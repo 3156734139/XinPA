@@ -112,30 +112,6 @@ const router = createRouter({
           meta: { title: '管理员管理', icon: 'Setting' },
         },
         {
-          path: 'order-sources',
-          name: 'AdminOrderSources',
-          component: () => import('@/views/admin/system/OrderSourceManage.vue'),
-          meta: { title: '来源管理', icon: 'Coin' },
-        },
-        {
-          path: 'payment-methods',
-          name: 'AdminPaymentMethods',
-          component: () => import('@/views/admin/system/PaymentMethodManage.vue'),
-          meta: { title: '支付方式管理', icon: 'Coin' },
-        },
-        {
-          path: 'package-types',
-          name: 'AdminPackageTypes',
-          component: () => import('@/views/admin/system/PackageTypeManage.vue'),
-          meta: { title: '套餐类型管理', icon: 'Coin' },
-        },
-        {
-          path: 'vip-levels',
-          name: 'AdminVipLevels',
-          component: () => import('@/views/admin/system/VipLevelManage.vue'),
-          meta: { title: '优惠等级配置', icon: 'TrendCharts' },
-        },
-        {
           path: 'announcements',
           name: 'AdminAnnouncements',
           component: () => import('@/views/admin/system/AnnouncementManage.vue'),

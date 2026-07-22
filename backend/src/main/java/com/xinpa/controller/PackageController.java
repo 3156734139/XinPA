@@ -5,6 +5,7 @@ import com.xinpa.common.UserContext;
 import com.xinpa.entity.PricePackage;
 import com.xinpa.service.OrderService;
 import com.xinpa.service.PricePackageService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -71,7 +72,7 @@ public class PackageController {
      * 添加套餐
      */
     @PostMapping
-    public Result<Void> addPackage(@RequestBody PricePackage pkg) {
+    public Result<Void> addPackage(@Valid @RequestBody PricePackage pkg) {
         pkg.setUserId(UserContext.getUserId());
         pricePackageService.add(pkg);
         return Result.ok();
@@ -81,7 +82,7 @@ public class PackageController {
      * 更新套餐
      */
     @PutMapping
-    public Result<Void> updatePackage(@RequestBody PricePackage pkg) {
+    public Result<Void> updatePackage(@Valid @RequestBody PricePackage pkg) {
         pkg.setUserId(UserContext.getUserId());
         pricePackageService.update(pkg);
         return Result.ok();

@@ -53,7 +53,6 @@ export interface Order {
   settleRatio: number;
   isOvernight: number;
   isOffline: number;
-  couponId: number;
   startTime: string;
   endTime: string;
   settleTime: string;

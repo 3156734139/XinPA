@@ -6,7 +6,11 @@ import com.xinpa.entity.SysUser;
 import com.xinpa.entity.UserFinanceSetting;
 import com.xinpa.mapper.SysUserMapper;
 import com.xinpa.mapper.UserFinanceSettingMapper;
+import com.xinpa.service.OrderSourceService;
+import com.xinpa.service.PackageTypeService;
+import com.xinpa.service.PaymentMethodService;
 import com.xinpa.service.SysUserService;
+import com.xinpa.service.VipLevelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,10 @@ public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserMapper sysUserMapper;
     private final UserFinanceSettingMapper userFinanceSettingMapper;
+    private final OrderSourceService orderSourceService;
+    private final VipLevelService vipLevelService;
+    private final PackageTypeService packageTypeService;
+    private final PaymentMethodService paymentMethodService;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -58,7 +66,7 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     /**
-     * 新用户初始化：创建财务设置
+     * 新用户初始化：财务设置 + 默认来源/VIP等级/套餐类型/支付方式
      */
     private void initNewUser(Long userId) {
         UserFinanceSetting financeSetting = new UserFinanceSetting();
@@ -66,6 +74,11 @@ public class SysUserServiceImpl implements SysUserService {
         financeSetting.setMonthlyTarget(BigDecimal.ZERO);
         financeSetting.setWithdrawFeeRate(BigDecimal.valueOf(0.006));
         userFinanceSettingMapper.insert(financeSetting);
+
+        orderSourceService.initDefaults(userId);
+        vipLevelService.initDefaults(userId);
+        packageTypeService.initDefaults(userId);
+        paymentMethodService.initDefaults(userId);
     }
 
     @Override

@@ -110,7 +110,7 @@
           </form>
 
           <div class="form-footer">
-            <router-link to="/register" class="footer-link">没有账号？去注册</router-link>
+            <span class="auto-register-hint">未注册手机号验证通过后将自动创建账号</span>
           </div>
         </div>
       </div>
@@ -604,6 +604,13 @@ onUnmounted(() => { if (countdownTimer) clearInterval(countdownTimer); });
 
 .footer-link:hover {
   color: #E8789A;
+}
+
+.auto-register-hint {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  text-align: center;
+  display: block;
 }
 
 /* ===== 响应式 ===== */

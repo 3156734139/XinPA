@@ -22,7 +22,8 @@ public interface CustomerService {
     Page<Customer> page(Long userId, String keyword, Long sourceId,
                         Integer spendLevel, BigDecimal minSpend, BigDecimal maxSpend,
                         Integer minOrders, Integer maxOrders, Integer isBlacklist,
-                        long current, long size);
+                        long current, long size,
+                        String sortField, String sortOrder);
 
     /**
      * 获取客户详情

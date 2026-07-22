@@ -173,7 +173,7 @@ async function loadOrders() {
   const startDate = formatDate(monday);
   const endDate = formatDate(sunday);
 
-  const res: any = await getOrders({ startDate, endDate, current: 1, size: 100 });
+  const res: any = await getOrders({ startTimeStart: startDate, startTimeEnd: endDate, current: 1, size: 100 });
   orders.value = res.data?.records || [];
 }
 

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AgentOrchestrator {
 
-    private static final int MAX_ROUNDS = 10;
+    private static final int MAX_ROUNDS = 6;
     private static final String SESSION_PREFIX = "agent:session:";
     private static final long SESSION_TTL_HOURS = 1;
 
@@ -119,7 +119,9 @@ public class AgentOrchestrator {
         List<ChatMessage> history = (List<ChatMessage>) redisTemplate.opsForValue().get(SESSION_PREFIX + userId);
         if (history == null) return List.of();
         return history.stream()
-                .filter(m -> !"system".equals(m.getRole()))
+                .filter(m -> !"system".equals(m.getRole()))           // 过滤系统提示词
+                .filter(m -> !"tool".equals(m.getRole()))             // 过滤工具调用结果
+                .filter(m -> m.getToolCalls() == null || m.getToolCalls().isEmpty())  // 过滤含工具调用的AI回复
                 .collect(Collectors.toList());
     }
 

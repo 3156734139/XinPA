@@ -4,7 +4,7 @@
       <template #header>
         <div class="header-bar">
           <span><PixelSticker :size="18" /> 价目套餐</span>
-          <el-button size="small" type="primary" @click="showDialog = true">添加套餐</el-button>
+          <el-button size="small" type="primary" @click="openAdd">添加套餐</el-button>
         </div>
       </template>
       <el-table :data="list" stripe>
@@ -42,13 +42,13 @@
     </el-card>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="showDialog" :title="editId ? '编辑套餐' : '添加套餐'" width="500px">
-      <el-form :model="form" label-width="100px">
-        <el-form-item label="套餐名称">
-          <el-input v-model="form.name" />
+    <el-dialog v-model="showDialog" :title="editId ? '编辑套餐' : '添加套餐'" width="500px" @close="formRef?.clearValidate">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <el-form-item label="套餐名称" prop="name" required>
+          <el-input v-model="form.name" placeholder="请输入套餐名称" />
         </el-form-item>
-        <el-form-item label="套餐类型">
-          <el-select v-model="form.packageType">
+        <el-form-item label="套餐类型" prop="packageType" required>
+          <el-select v-model="form.packageType" placeholder="请选择套餐类型" style="width:100%">
             <el-option
               v-for="t in typeOptions"
               :key="t.id"
@@ -57,14 +57,17 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="价格(元)">
-          <el-input-number v-model="form.price" :precision="2" :min="0" />
+        <el-form-item label="价格(元)" prop="price" required>
+          <el-input-number v-model="form.price" :precision="2" :min="0" style="width:100%" />
         </el-form-item>
-        <el-form-item label="计价单位">
-          <el-input v-model="form.unit" placeholder="如: 小时/局/天" />
+        <el-form-item label="计价单位" prop="unit" required>
+          <el-select v-model="form.unit" placeholder="请选择计价单位" style="width:100%">
+            <el-option label="小时" value="小时" />
+            <el-option label="次" value="次" />
+          </el-select>
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="form.description" :rows="2" />
+          <el-input v-model="form.description" :rows="2" placeholder="选填" />
         </el-form-item>
         <el-form-item label="上架">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
@@ -82,6 +85,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import { getPackages, addPackage, updatePackage, deletePackage } from '@/api/packages';
 import { getEnabledPackageTypes } from '@/api/packageType';
 
@@ -100,7 +104,14 @@ const list = ref<any[]>([]);
 const showDialog = ref(false);
 const editId = ref<number | null>(null);
 const saving = ref(false);
-const form = reactive({ name: '', packageType: 1, price: 0, unit: '小时', description: '', status: 1 });
+const formRef = ref<FormInstance>();
+const rules: FormRules = {
+  name: [{ required: true, message: '请输入套餐名称', trigger: 'blur' }],
+  packageType: [{ required: true, message: '请选择套餐类型', trigger: 'change' }],
+  price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
+  unit: [{ required: true, message: '请选择计价单位', trigger: 'change' }],
+};
+const form = reactive({ name: '', packageType: undefined as number | undefined, price: 0, unit: '', description: '', status: 1 });
 
 onMounted(() => { loadList(); loadTypes(); });
 
@@ -123,9 +134,26 @@ async function loadList() {
   }));
 }
 
+function openAdd() {
+  editId.value = null;
+  formRef.value?.resetFields();
+  form.name = '';
+  form.packageType = undefined;
+  form.price = 0;
+  form.unit = '';
+  form.description = '';
+  form.status = 1;
+  showDialog.value = true;
+}
+
 function edit(row: any) {
   editId.value = row.id;
-  Object.assign(form, row);
+  form.name = row.name;
+  form.packageType = row.packageType;
+  form.price = row.price;
+  form.unit = row.unit;
+  form.description = row.description || '';
+  form.status = row.status;
   showDialog.value = true;
 }
 
@@ -146,6 +174,12 @@ function viewOrders(row: any) {
 }
 
 async function handleSave() {
+  if (!formRef.value) return;
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
   saving.value = true;
   try {
     if (editId.value) {

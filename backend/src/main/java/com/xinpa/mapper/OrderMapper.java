@@ -44,7 +44,8 @@ public interface OrderMapper extends BaseMapper<Order> {
     long countTodayByUserId(@Param("userId") Long userId, @Param("date") LocalDate date);
 
     /** 客户订单统计（已完成订单） */
-    @Select("SELECT COUNT(*) as order_count, COALESCE(SUM(final_amount), 0) as total_spend " +
+    @Select("SELECT COUNT(*) as order_count, COALESCE(SUM(final_amount), 0) as total_spend, " +
+            "MIN(start_time) as first_order_time " +
             "FROM `order` WHERE customer_id = #{customerId} AND status = 4 AND deleted = 0")
     Map<String, Object> selectCustomerStats(@Param("customerId") Long customerId);
 }

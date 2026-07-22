@@ -81,7 +81,7 @@
             </el-table-column>
           </el-table>
           <el-pagination
-            v-model:current="query.current"
+            v-model:current-page="query.current"
             v-model:page-size="query.size"
             :total="recordTotal"
             :page-sizes="[5, 10, 20]"
@@ -376,8 +376,8 @@ async function handleDelete(id: number) {
 }
 .right-col { flex-direction: column; gap: 12px; }
 .right-col > .el-card { margin-bottom: 0; }
-.trend-card { flex: 1; display: flex; flex-direction: column; }
-.trend-card :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; }
-.trend-chart-wrapper { flex: 1; }
-.trend-chart-wrapper > * { width: 100%; height: 100%; }
+.trend-card { flex: 1; display: flex; flex-direction: column; overflow: visible; }
+.trend-card :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: visible; }
+.trend-chart-wrapper { flex: 1; overflow: visible; min-height: 260px; }
+.trend-chart-wrapper > * { width: 100%; height: 100%; min-height: 260px; overflow: visible; }
 </style>

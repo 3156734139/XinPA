@@ -25,7 +25,7 @@ CREATE TABLE sys_user (
     deleted         TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除',
     INDEX idx_phone (phone),
     INDEX idx_status (status)
-) ENGINE=InnoDB COMMENT='陪玩用户表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='陪玩用户表';
 
 CREATE TABLE sys_admin (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -38,7 +38,7 @@ CREATE TABLE sys_admin (
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted         TINYINT      NOT NULL DEFAULT 0
-) ENGINE=InnoDB COMMENT='管理员表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
 
 CREATE TABLE sys_announcement (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -49,7 +49,7 @@ CREATE TABLE sys_announcement (
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted     TINYINT      NOT NULL DEFAULT 0
-) ENGINE=InnoDB COMMENT='全平台公告';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='全平台公告';
 
 CREATE TABLE price_package (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -66,7 +66,7 @@ CREATE TABLE price_package (
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='价目套餐';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='价目套餐';
 
 -- ==================== 素材库 ====================
 
@@ -81,7 +81,7 @@ CREATE TABLE material (
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='素材库';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='素材库';
 
 -- ==================== 客户管理 ====================
 
@@ -108,7 +108,7 @@ CREATE TABLE customer (
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id),
     INDEX idx_blacklist (user_id, is_blacklist)
-) ENGINE=InnoDB COMMENT='客户档案';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='客户档案';
 
 -- ==================== 订单管理 ====================
 
@@ -123,6 +123,7 @@ CREATE TABLE `order` (
     title           VARCHAR(256) NOT NULL COMMENT '订单标题',
     status          TINYINT      NOT NULL DEFAULT 1 COMMENT '1待接单 2进行中 3待结算 4已完结 5售后退款',
     unit_price      DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '单价',
+    unit            VARCHAR(16)  DEFAULT '小时' COMMENT '计价单位（小时、次、晚等）',
     billed_minutes  INT          DEFAULT 0 COMMENT '计费时长(分钟)',
     actual_minutes  INT          DEFAULT 0 COMMENT '实际计时(分钟)',
     extra_minutes   INT          DEFAULT 0 COMMENT '手动补时(分钟)',
@@ -132,7 +133,6 @@ CREATE TABLE `order` (
     payment_method  VARCHAR(32)  DEFAULT NULL COMMENT '支付方式(旧字段)',
     payment_method_id BIGINT     DEFAULT NULL COMMENT '关联payment_method.id',
     settle_ratio    DECIMAL(5,2)  DEFAULT 100.00 COMMENT '到手比例(100=100%)',
-    coupon_id       BIGINT       DEFAULT NULL COMMENT '关联coupon.id',
     is_overnight    TINYINT      DEFAULT 0 COMMENT '是否通宵单',
     is_offline      TINYINT      DEFAULT 0 COMMENT '是否线下单',
     start_time      DATETIME     DEFAULT NULL COMMENT '开始计时',
@@ -146,7 +146,7 @@ CREATE TABLE `order` (
     INDEX idx_user_id (user_id),
     INDEX idx_status (user_id, status),
     INDEX idx_appointment (user_id, appointment_time)
-) ENGINE=InnoDB COMMENT='订单表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单表';
 
 CREATE TABLE order_timer_log (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -156,26 +156,7 @@ CREATE TABLE order_timer_log (
     minutes     INT          DEFAULT 0 COMMENT '耗时(分钟)',
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_order_id (order_id)
-) ENGINE=InnoDB COMMENT='订单计时日志';
-
--- ==================== 优惠券 ====================
-
-CREATE TABLE coupon (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id         BIGINT       NOT NULL COMMENT '用户ID',
-    customer_id     BIGINT       DEFAULT NULL COMMENT '客户ID',
-    name            VARCHAR(128) NOT NULL COMMENT '优惠券名称',
-    coupon_type     TINYINT      NOT NULL COMMENT '类型: 1折扣 2减免 3免单 4加时',
-    discount_value  DECIMAL(10,2) DEFAULT NULL COMMENT '折扣值/减免金额',
-    free_hours      DECIMAL(8,2)  DEFAULT NULL COMMENT '加时时长(小时)',
-    min_amount      DECIMAL(10,2) DEFAULT 0 COMMENT '最低消费门槛',
-    expire_time     DATETIME     DEFAULT NULL COMMENT '过期时间',
-    status          TINYINT      NOT NULL DEFAULT 0 COMMENT '0未使用 1已使用 2已过期',
-    used_order_id   BIGINT       DEFAULT NULL COMMENT '使用的订单ID',
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_customer_id (customer_id)
-) ENGINE=InnoDB COMMENT='优惠券';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单计时日志';
 
 -- ==================== 财务管理 ====================
 
@@ -194,7 +175,7 @@ CREATE TABLE finance_record (
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_date (user_id, record_date),
     INDEX idx_type (user_id, record_type)
-) ENGINE=InnoDB COMMENT='财务流水';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='财务流水';
 
 CREATE TABLE user_finance_setting (
     id                    BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -204,7 +185,7 @@ CREATE TABLE user_finance_setting (
     withdraw_fee_rate      DECIMAL(5,4) DEFAULT 0.006 COMMENT '提现手续费率',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='用户财务设置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户财务设置';
 
 -- ==================== 日程工具 ====================
 
@@ -219,7 +200,7 @@ CREATE TABLE todo_item (
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted     TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_status (user_id, status)
-) ENGINE=InnoDB COMMENT='待办看板';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='待办看板';
 
 CREATE TABLE copywriting (
     id              BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -232,7 +213,7 @@ CREATE TABLE copywriting (
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted         TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='文案库';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文案库';
 
 CREATE TABLE quick_phrase (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -242,7 +223,7 @@ CREATE TABLE quick_phrase (
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted     TINYINT      NOT NULL DEFAULT 0,
     INDEX idx_user_id (user_id)
-) ENGINE=InnoDB COMMENT='快捷语';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='快捷语';
 
 -- ==================== 系统配置 ====================
 
@@ -252,7 +233,7 @@ CREATE TABLE sys_config (
     config_value TEXT        NOT NULL COMMENT '配置值',
     description VARCHAR(256) DEFAULT NULL COMMENT '描述',
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='系统配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置';
 
 -- ==================== 字典表 ====================
 
@@ -261,28 +242,34 @@ CREATE TABLE order_source (
     name        VARCHAR(64) NOT NULL COMMENT '来源名称',
     sort_order  INT         DEFAULT 0,
     status      TINYINT     DEFAULT 1 COMMENT '0禁用 1启用',
+    user_id     BIGINT      NOT NULL COMMENT '所属用户ID',
     created_at  DATETIME    DEFAULT CURRENT_TIMESTAMP,
-    deleted     TINYINT     DEFAULT 0
-) ENGINE=InnoDB COMMENT='订单来源字典（全局）';
+    deleted     TINYINT     DEFAULT 0,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单来源字典';
 
 CREATE TABLE payment_method (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
     name        VARCHAR(64) NOT NULL COMMENT '支付方式名称',
     sort_order  INT         DEFAULT 0,
     status      TINYINT     DEFAULT 1 COMMENT '0禁用 1启用',
+    user_id     BIGINT      NOT NULL COMMENT '所属用户ID',
     created_at  DATETIME    DEFAULT CURRENT_TIMESTAMP,
-    deleted     TINYINT     DEFAULT 0
-) ENGINE=InnoDB COMMENT='支付方式字典（全局）';
+    deleted     TINYINT     DEFAULT 0,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付方式（用户私有）';
 
 CREATE TABLE package_type (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
     name        VARCHAR(64) NOT NULL COMMENT '类型名称',
     sort_order  INT         NOT NULL DEFAULT 0 COMMENT '排序',
     status      TINYINT     NOT NULL DEFAULT 1 COMMENT '0禁用 1启用',
+    user_id     BIGINT      NOT NULL COMMENT '所属用户ID',
     created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted     TINYINT     NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    INDEX idx_user_id (user_id),
     INDEX idx_status (status)
-) ENGINE=InnoDB COMMENT='套餐类型字典';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='套餐类型（用户私有）';
 
 CREATE TABLE vip_level (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -291,13 +278,15 @@ CREATE TABLE vip_level (
     threshold   DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '消费门槛(元)',
     discount    INT          NOT NULL DEFAULT 100 COMMENT '折扣 如98=98折',
     benefits    VARCHAR(500) DEFAULT NULL COMMENT '等级福利描述',
+    user_id     BIGINT       NOT NULL COMMENT '所属用户ID',
     sort_order  INT          DEFAULT 0 COMMENT '排序',
     status      TINYINT      DEFAULT 1 COMMENT '0禁用 1启用',
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted     TINYINT      DEFAULT 0 COMMENT '逻辑删除',
-    UNIQUE KEY uk_level (`level`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP等级配置';
+    UNIQUE KEY uk_user_level (`user_id`, `level`),
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP等级配置（用户私有）';
 
 -- ==================== 初始化数据 ====================
 
@@ -311,24 +300,5 @@ INSERT IGNORE INTO sys_user (password, nickname, phone, member_type, status) VAL
 
 INSERT IGNORE INTO user_finance_setting (user_id, monthly_target, monthly_expense_target) VALUES (1, 10000.00, 0.00);
 
--- 订单来源
-INSERT IGNORE INTO order_source (name, sort_order) VALUES ('pw店（备注填店名）', 1), ('抖音', 2), ('小红书', 3), ('其他', 4);
-
--- 支付方式
-INSERT IGNORE INTO payment_method (name, sort_order) VALUES ('平台', 1), ('微信', 2), ('支付宝', 3), ('现金', 4);
-
--- 套餐类型
-INSERT IGNORE INTO package_type (name, sort_order, status) VALUES
-('小时单', 1, 1), ('包夜', 2, 1), ('教学', 3, 1), ('包月', 4, 1), ('线下', 5, 1);
-
--- VIP等级
-INSERT IGNORE INTO vip_level (`level`, name, threshold, discount, benefits, sort_order) VALUES
-(1, 'VIP1', 500, 98, '全场98折', 1),
-(2, 'VIP2', 1500, 98, '全场98折', 2),
-(3, 'VIP3', 3888, 95, '全场95折', 3),
-(4, 'VIP4', 10000, 95, '全场95折', 4),
-(5, 'VIP5', 16888, 92, '全场92折', 5),
-(6, 'VIP6', 28888, 92, '专属客服·全场9折', 6);
-
--- 补全现有订单的计费时长
-UPDATE `order` SET billed_minutes = actual_minutes + extra_minutes WHERE actual_minutes > 0;
+-- 支付方式、套餐类型、VIP等级现在由用户注册时自动初始化（参见 SysUserServiceImpl.initNewUser）
+-- 不再需要全局默认值

@@ -65,104 +65,263 @@
         </div>
       </el-col>
 
-      <!-- 右侧：编辑资料 -->
+      <!-- 右侧：Tabs -->
       <el-col :xs="24" :md="16">
-        <!-- 编辑资料 -->
-        <div class="content-card mb-20">
-          <div class="card-section-header">
-            <el-icon :size="18"><Edit /></el-icon>
-            <span>编辑资料</span>
-          </div>
-          <el-form
-            ref="profileFormRef"
-            :model="profileForm"
-            :rules="profileRules"
-            label-position="top"
-            class="profile-form"
-          >
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="昵称" prop="nickname">
-                  <el-input v-model="profileForm.nickname" placeholder="输入你的昵称/艺名" maxlength="64" />
+        <el-tabs v-model="activeTab" class="profile-tabs">
+          <!-- Tab 1: 基本资料 -->
+          <el-tab-pane label="基本资料" name="profile">
+            <!-- 编辑资料 -->
+            <div class="content-card mb-20">
+              <div class="card-section-header">
+                <el-icon :size="18"><Edit /></el-icon>
+                <span>编辑资料</span>
+              </div>
+              <el-form
+                ref="profileFormRef"
+                :model="profileForm"
+                :rules="profileRules"
+                label-position="top"
+                class="profile-form"
+              >
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="昵称" prop="nickname">
+                      <el-input v-model="profileForm.nickname" placeholder="输入你的昵称/艺名" maxlength="64" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="手机号" prop="phone">
+                      <el-input v-model="profileForm.phone" placeholder="选填" maxlength="20" :disabled="!!profileForm.phone" />
+                      <div v-if="profileForm.phone" class="form-tip">手机号绑定后不可修改</div>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="邮箱" prop="email">
+                      <el-input v-model="profileForm.email" placeholder="选填" maxlength="128" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-form-item>
+                  <el-button type="primary" :loading="profileSaving" @click="handleSaveProfile" round>
+                    保存修改
+                  </el-button>
                 </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="手机号" prop="phone">
-                  <el-input v-model="profileForm.phone" placeholder="选填" maxlength="20" :disabled="!!profileForm.phone" />
-                  <div v-if="profileForm.phone" class="form-tip">手机号绑定后不可修改</div>
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="邮箱" prop="email">
-                  <el-input v-model="profileForm.email" placeholder="选填" maxlength="128" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-form-item>
-              <el-button type="primary" :loading="profileSaving" @click="handleSaveProfile" round>
-                保存修改
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
+              </el-form>
+            </div>
 
-        <!-- 修改密码 -->
-        <div class="content-card mb-20">
-          <div class="card-section-header">
-            <el-icon :size="18"><Lock /></el-icon>
-            <span>修改密码</span>
-          </div>
-          <el-form
-            ref="passwordFormRef"
-            :model="passwordForm"
-            :rules="passwordRules"
-            label-position="top"
-            class="profile-form"
-          >
-            <el-row :gutter="20">
-              <el-col :span="8">
-                <el-form-item label="当前密码" prop="oldPassword">
-                  <el-input
-                    v-model="passwordForm.oldPassword"
+            <!-- 修改密码 -->
+            <div class="content-card mb-20">
+              <div class="card-section-header">
+                <el-icon :size="18"><Lock /></el-icon>
+                <span>修改密码</span>
+              </div>
+              <el-form
+                ref="passwordFormRef"
+                :model="passwordForm"
+                :rules="passwordRules"
+                label-position="top"
+                class="profile-form"
+              >
+                <el-row :gutter="20">
+                  <el-col :span="8">
+                    <el-form-item label="当前密码" prop="oldPassword">
+                      <el-input v-model="passwordForm.oldPassword" placeholder="如未设置密码则留空" show-password />
+                      <div class="form-tip">如注册时未设置密码，此项留空即可</div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="新密码" prop="newPassword">
+                      <el-input v-model="passwordForm.newPassword" placeholder="至少6位" show-password />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="确认新密码" prop="confirmPassword">
+                      <el-input v-model="passwordForm.confirmPassword" placeholder="再次输入新密码" show-password />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-form-item>
+                  <el-button type="primary" :loading="passwordSaving" @click="handleChangePassword" round>
+                    更新密码
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-tab-pane>
 
-                    placeholder="如未设置密码则留空"
-                    show-password
-                  />
-                  <div class="form-tip">如注册时未设置密码，此项留空即可</div>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="新密码" prop="newPassword">
-                  <el-input
-                    v-model="passwordForm.newPassword"
-                   
-                    placeholder="至少6位"
-                    show-password
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="确认新密码" prop="confirmPassword">
-                  <el-input
-                    v-model="passwordForm.confirmPassword"
-                   
-                    placeholder="再次输入新密码"
-                    show-password
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-form-item>
-              <el-button type="primary" :loading="passwordSaving" @click="handleChangePassword" round>
-                更新密码
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
+          <!-- Tab 2: 配置管理 -->
+          <el-tab-pane label="配置管理" name="configs">
+            <div class="config-grid">
+              <!-- 我的来源 -->
+              <div class="content-card config-card">
+                <div class="card-section-header">
+                  <el-icon :size="16"><Coin /></el-icon>
+                  <span>我的来源</span>
+                </div>
+                <div class="config-body">
+                  <div class="add-row">
+                    <el-input v-model="newSourceName" placeholder="输入来源名称" clearable size="small" @keyup.enter="handleAddSource" />
+                    <el-button type="primary" size="small" :disabled="!newSourceName.trim()" @click="handleAddSource">新增</el-button>
+                  </div>
+                  <div v-if="sources.length === 0" class="empty-tip">暂无</div>
+                  <div v-else class="tag-list">
+                    <el-tag
+                      v-for="item in sources" :key="item.id"
+                      closable :disable-transitions="false"
+                      :type="item.status === 1 ? '' : 'info'"
+                      @close="handleDeleteSource(item.id)"
+                    >
+                      <span class="tag-name" @click="handleEditSource(item)">{{ item.name }}</span>
+                    </el-tag>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 我的套餐类型 -->
+              <div class="content-card config-card">
+                <div class="card-section-header">
+                  <el-icon :size="16"><PriceTag /></el-icon>
+                  <span>我的套餐类型</span>
+                </div>
+                <div class="config-body">
+                  <div class="add-row">
+                    <el-input v-model="newPackageTypeName" placeholder="输入类型名称" clearable size="small" @keyup.enter="handleAddPackageType" />
+                    <el-button type="primary" size="small" :disabled="!newPackageTypeName.trim()" @click="handleAddPackageType">新增</el-button>
+                  </div>
+                  <div v-if="packageTypes.length === 0" class="empty-tip">暂无</div>
+                  <div v-else class="tag-list">
+                    <el-tag
+                      v-for="item in packageTypes" :key="item.id"
+                      closable :disable-transitions="false"
+                      :type="item.status === 1 ? '' : 'info'"
+                      @close="handleDeletePackageType(item.id)"
+                    >
+                      <span class="tag-name" @click="handleEditPackageType(item)">{{ item.name }}</span>
+                    </el-tag>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 我的支付方式 -->
+              <div class="content-card config-card">
+                <div class="card-section-header">
+                  <el-icon :size="16"><Coin /></el-icon>
+                  <span>我的支付方式</span>
+                </div>
+                <div class="config-body">
+                  <div class="add-row">
+                    <el-input v-model="newPaymentMethodName" placeholder="输入支付方式名称" clearable size="small" @keyup.enter="handleAddPaymentMethod" />
+                    <el-button type="primary" size="small" :disabled="!newPaymentMethodName.trim()" @click="handleAddPaymentMethod">新增</el-button>
+                  </div>
+                  <div v-if="paymentMethods.length === 0" class="empty-tip">暂无</div>
+                  <div v-else class="tag-list">
+                    <el-tag
+                      v-for="item in paymentMethods" :key="item.id"
+                      closable :disable-transitions="false"
+                      :type="item.status === 1 ? '' : 'info'"
+                      @close="handleDeletePaymentMethod(item.id)"
+                    >
+                      <span class="tag-name" @click="handleEditPaymentMethod(item)">{{ item.name }}</span>
+                    </el-tag>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 我的优惠等级 -->
+              <div class="content-card config-card config-card-wide">
+                <div class="card-section-header">
+                  <el-icon :size="16"><TrendCharts /></el-icon>
+                  <span>我的优惠等级</span>
+                </div>
+                <div class="config-body">
+                  <el-table :data="vipLevels" size="small" stripe style="width:100%">
+                    <el-table-column prop="level" label="等级" width="60" />
+                    <el-table-column prop="name" label="名称" width="80" />
+                    <el-table-column prop="threshold" label="门槛(元)" width="100" />
+                    <el-table-column prop="discount" label="折扣" width="70">
+                      <template #default="{ row }">{{ row.discount }}折</template>
+                    </el-table-column>
+                    <el-table-column prop="benefits" label="福利" min-width="100" />
+                    <el-table-column label="状态" width="70">
+                      <template #default="{ row }">
+                        <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="110">
+                      <template #default="{ row }">
+                        <el-button size="small" link @click="handleEditVipLevel(row)">编辑</el-button>
+                        <el-button size="small" link type="danger" @click="handleDeleteVipLevel(row.id)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-button size="small" style="margin-top:12px" @click="handleAddVipLevel">+ 新增等级</el-button>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </el-col>
     </el-row>
+
+    <!-- ============ 全局弹窗 ============ -->
+
+    <!-- 编辑来源 -->
+    <el-dialog v-model="editDialogVisible" title="编辑来源" width="400px">
+      <el-form :model="editForm" label-width="80px">
+        <el-form-item label="来源名称"><el-input v-model="editForm.name" maxlength="32" /></el-form-item>
+        <el-form-item label="排序"><el-input-number v-model="editForm.sortOrder" :min="0" /></el-form-item>
+        <el-form-item label="状态"><el-switch v-model="editForm.status" :active-value="1" :inactive-value="0" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="handleSaveSource">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑优惠等级 -->
+    <el-dialog v-model="vipEditVisible" title="编辑优惠等级" width="500px">
+      <el-form :model="vipEditForm" label-width="120px">
+        <el-form-item label="等级数字"><el-input-number v-model="vipEditForm.level" :min="1" :max="20" /></el-form-item>
+        <el-form-item label="等级名称"><el-input v-model="vipEditForm.name" maxlength="64" /></el-form-item>
+        <el-form-item label="消费门槛(元)"><el-input-number v-model="vipEditForm.threshold" :min="0" :precision="2" /></el-form-item>
+        <el-form-item label="折扣(%)"><el-input-number v-model="vipEditForm.discount" :min="1" :max="100" /><div class="form-tip">如 98 表示 98折</div></el-form-item>
+        <el-form-item label="福利描述"><el-input v-model="vipEditForm.benefits" type="textarea" :rows="2" maxlength="500" /></el-form-item>
+        <el-form-item label="排序"><el-input-number v-model="vipEditForm.sortOrder" :min="0" /></el-form-item>
+        <el-form-item label="状态"><el-switch v-model="vipEditForm.status" :active-value="1" :inactive-value="0" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="vipEditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="vipSaving" @click="handleSaveVipLevel">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑套餐类型 -->
+    <el-dialog v-model="ptEditVisible" title="编辑套餐类型" width="400px">
+      <el-form :model="ptEditForm" label-width="80px">
+        <el-form-item label="类型名称"><el-input v-model="ptEditForm.name" maxlength="32" /></el-form-item>
+        <el-form-item label="排序"><el-input-number v-model="ptEditForm.sortOrder" :min="0" /></el-form-item>
+        <el-form-item label="状态"><el-switch v-model="ptEditForm.status" :active-value="1" :inactive-value="0" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="ptEditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="ptSaving" @click="handleSavePackageType">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑支付方式 -->
+    <el-dialog v-model="pmEditVisible" title="编辑支付方式" width="400px">
+      <el-form :model="pmEditForm" label-width="80px">
+        <el-form-item label="支付方式"><el-input v-model="pmEditForm.name" maxlength="32" /></el-form-item>
+        <el-form-item label="排序"><el-input-number v-model="pmEditForm.sortOrder" :min="0" /></el-form-item>
+        <el-form-item label="状态"><el-switch v-model="pmEditForm.status" :active-value="1" :inactive-value="0" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pmEditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pmSaving" @click="handleSavePaymentMethod">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -171,11 +330,16 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/store/user';
 import { getUserInfo, updateUserInfo, changePassword, getAvatarUploadToken, notifyAvatarComplete } from '@/api/auth';
-import { Camera, Edit, Lock } from '@element-plus/icons-vue';
+import { getUserSources, createUserSource, updateUserSource, deleteUserSource } from '@/api/orderSource';
+import { getUserVipLevels, createUserVipLevel, updateUserVipLevel, deleteUserVipLevel } from '@/api/vipLevel';
+import { getUserPackageTypes, createUserPackageType, updateUserPackageType, deleteUserPackageType } from '@/api/packageType';
+import { getUserPaymentMethods, createUserPaymentMethod, updateUserPaymentMethod, deleteUserPaymentMethod } from '@/api/paymentMethod';
+import { Camera, Edit, Lock, Coin, TrendCharts, PriceTag } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
 import PixelSticker from '@/components/PixelSticker.vue';
 
 const userStore = useUserStore();
+const activeTab = ref('profile');
 const fileInputRef = ref<HTMLInputElement>();
 const profileFormRef = ref<FormInstance>();
 const passwordFormRef = ref<FormInstance>();
@@ -223,8 +387,19 @@ const passwordRules = {
   ],
 };
 
+// 来源管理
+const sources = ref<any[]>([]);
+const newSourceName = ref('');
+const editDialogVisible = ref(false);
+const editSaving = ref(false);
+const editForm = reactive({ id: 0, name: '', sortOrder: 0, status: 1 });
+
 onMounted(async () => {
   await loadUserInfo();
+  await loadSources();
+  await loadVipLevels();
+  await loadPackageTypes();
+  await loadPaymentMethods();
 });
 
 async function loadUserInfo() {
@@ -378,6 +553,225 @@ function calcDays(createdAt: string): number {
 function formatTime(time: string | undefined | null): string {
   if (!time) return '';
   return time.substring(0, 10) + ' ' + time.substring(11, 16);
+}
+
+// ==================== 来源管理 ====================
+
+async function loadSources() {
+  try {
+    const res: any = await getUserSources();
+    sources.value = res.data || [];
+  } catch { /* ignore */ }
+}
+
+async function handleAddSource() {
+  const name = newSourceName.value.trim();
+  if (!name) return;
+  try {
+    await createUserSource({ name, sortOrder: sources.value.length });
+    newSourceName.value = '';
+    await loadSources();
+    ElMessage.success('来源已添加');
+  } catch { /* ignore */ }
+}
+
+function handleEditSource(item: any) {
+  editForm.id = item.id;
+  editForm.name = item.name;
+  editForm.sortOrder = item.sortOrder ?? 0;
+  editForm.status = item.status ?? 1;
+  editDialogVisible.value = true;
+}
+
+async function handleSaveSource() {
+  editSaving.value = true;
+  try {
+    await updateUserSource({ id: editForm.id, name: editForm.name, sortOrder: editForm.sortOrder, status: editForm.status });
+    editDialogVisible.value = false;
+    await loadSources();
+    ElMessage.success('来源已更新');
+  } finally {
+    editSaving.value = false;
+  }
+}
+
+async function handleDeleteSource(id: number) {
+  try {
+    await deleteUserSource(id);
+    await loadSources();
+    ElMessage.success('来源已删除');
+  } catch { /* ignore */ }
+}
+
+// ==================== 优惠等级管理 ====================
+
+const vipLevels = ref<any[]>([]);
+const vipEditVisible = ref(false);
+const vipSaving = ref(false);
+const vipEditForm = reactive({ id: 0, level: 1, name: '', threshold: 0, discount: 98, benefits: '', sortOrder: 0, status: 1 });
+
+async function loadVipLevels() {
+  try {
+    const res: any = await getUserVipLevels();
+    vipLevels.value = res.data || [];
+  } catch { /* ignore */ }
+}
+
+function handleAddVipLevel() {
+  vipEditForm.id = 0;
+  vipEditForm.level = vipLevels.value.length + 1;
+  vipEditForm.name = '';
+  vipEditForm.threshold = 0;
+  vipEditForm.discount = 98;
+  vipEditForm.benefits = '';
+  vipEditForm.sortOrder = vipLevels.value.length + 1;
+  vipEditForm.status = 1;
+  vipEditVisible.value = true;
+}
+
+function handleEditVipLevel(item: any) {
+  vipEditForm.id = item.id;
+  vipEditForm.level = item.level;
+  vipEditForm.name = item.name;
+  vipEditForm.threshold = item.threshold;
+  vipEditForm.discount = item.discount;
+  vipEditForm.benefits = item.benefits || '';
+  vipEditForm.sortOrder = item.sortOrder ?? 0;
+  vipEditForm.status = item.status ?? 1;
+  vipEditVisible.value = true;
+}
+
+async function handleSaveVipLevel() {
+  vipSaving.value = true;
+  try {
+    const data = { ...vipEditForm };
+    if (vipEditForm.id) {
+      await updateUserVipLevel(data);
+    } else {
+      await createUserVipLevel(data);
+    }
+    vipEditVisible.value = false;
+    await loadVipLevels();
+    ElMessage.success(vipEditForm.id ? '等级已更新' : '等级已添加');
+  } finally {
+    vipSaving.value = false;
+  }
+}
+
+async function handleDeleteVipLevel(id: number) {
+  try {
+    await deleteUserVipLevel(id);
+    await loadVipLevels();
+    ElMessage.success('等级已删除');
+  } catch { /* ignore */ }
+}
+
+// ==================== 套餐类型管理 ====================
+
+const packageTypes = ref<any[]>([]);
+const newPackageTypeName = ref('');
+const ptEditVisible = ref(false);
+const ptSaving = ref(false);
+const ptEditForm = reactive({ id: 0, name: '', sortOrder: 0, status: 1 });
+
+async function loadPackageTypes() {
+  try {
+    const res: any = await getUserPackageTypes();
+    packageTypes.value = res.data || [];
+  } catch { /* ignore */ }
+}
+
+async function handleAddPackageType() {
+  const name = newPackageTypeName.value.trim();
+  if (!name) return;
+  try {
+    await createUserPackageType({ name, sortOrder: packageTypes.value.length });
+    newPackageTypeName.value = '';
+    await loadPackageTypes();
+    ElMessage.success('套餐类型已添加');
+  } catch { /* ignore */ }
+}
+
+function handleEditPackageType(item: any) {
+  ptEditForm.id = item.id;
+  ptEditForm.name = item.name;
+  ptEditForm.sortOrder = item.sortOrder ?? 0;
+  ptEditForm.status = item.status ?? 1;
+  ptEditVisible.value = true;
+}
+
+async function handleSavePackageType() {
+  ptSaving.value = true;
+  try {
+    await updateUserPackageType({ id: ptEditForm.id, name: ptEditForm.name, sortOrder: ptEditForm.sortOrder, status: ptEditForm.status });
+    ptEditVisible.value = false;
+    await loadPackageTypes();
+    ElMessage.success('套餐类型已更新');
+  } finally {
+    ptSaving.value = false;
+  }
+}
+
+async function handleDeletePackageType(id: number) {
+  try {
+    await deleteUserPackageType(id);
+    await loadPackageTypes();
+    ElMessage.success('套餐类型已删除');
+  } catch { /* ignore */ }
+}
+
+// ==================== 支付方式管理 ====================
+
+const paymentMethods = ref<any[]>([]);
+const newPaymentMethodName = ref('');
+const pmEditVisible = ref(false);
+const pmSaving = ref(false);
+const pmEditForm = reactive({ id: 0, name: '', sortOrder: 0, status: 1 });
+
+async function loadPaymentMethods() {
+  try {
+    const res: any = await getUserPaymentMethods();
+    paymentMethods.value = res.data || [];
+  } catch { /* ignore */ }
+}
+
+async function handleAddPaymentMethod() {
+  const name = newPaymentMethodName.value.trim();
+  if (!name) return;
+  try {
+    await createUserPaymentMethod({ name, sortOrder: paymentMethods.value.length });
+    newPaymentMethodName.value = '';
+    await loadPaymentMethods();
+    ElMessage.success('支付方式已添加');
+  } catch { /* ignore */ }
+}
+
+function handleEditPaymentMethod(item: any) {
+  pmEditForm.id = item.id;
+  pmEditForm.name = item.name;
+  pmEditForm.sortOrder = item.sortOrder ?? 0;
+  pmEditForm.status = item.status ?? 1;
+  pmEditVisible.value = true;
+}
+
+async function handleSavePaymentMethod() {
+  pmSaving.value = true;
+  try {
+    await updateUserPaymentMethod({ id: pmEditForm.id, name: pmEditForm.name, sortOrder: pmEditForm.sortOrder, status: pmEditForm.status });
+    pmEditVisible.value = false;
+    await loadPaymentMethods();
+    ElMessage.success('支付方式已更新');
+  } finally {
+    pmSaving.value = false;
+  }
+}
+
+async function handleDeletePaymentMethod(id: number) {
+  try {
+    await deleteUserPaymentMethod(id);
+    await loadPaymentMethods();
+    ElMessage.success('支付方式已删除');
+  } catch { /* ignore */ }
 }
 </script>
 
@@ -556,7 +950,101 @@ function formatTime(time: string | undefined | null): string {
   line-height: 1.4;
 }
 
+/* ===== Tabs ===== */
+.profile-tabs {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(232, 130, 154, 0.06);
+  padding: 8px 24px 24px;
+}
+
+.profile-tabs :deep(.el-tabs__header) {
+  margin: 0 0 20px;
+  border-bottom: 1px solid rgba(232, 130, 154, 0.08);
+}
+
+.profile-tabs :deep(.el-tabs__item) {
+  font-size: 15px;
+  font-weight: 600;
+  color: #A890B0;
+  height: 48px;
+  line-height: 48px;
+  padding: 0 20px;
+}
+
+.profile-tabs :deep(.el-tabs__item.is-active) {
+  color: #E8789A;
+}
+
+.profile-tabs :deep(.el-tabs__active-bar) {
+  background: #E8789A;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ===== 配置网格 ===== */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.config-card-wide {
+  grid-column: 1 / -1;
+}
+
+.config-card {
+  padding: 20px !important;
+}
+
+.config-card .card-section-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  font-size: 14px;
+}
+
+.config-body {
+  min-height: 0;
+}
+
+/* ===== 标签列表 ===== */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tag-name {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s;
+}
+
+.tag-name:hover {
+  border-bottom-color: currentColor;
+}
+
+.add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-row .el-input {
+  flex: 1;
+}
+
+/* ===== 空态 ===== */
+.empty-tip {
+  font-size: 13px;
+  color: #A890B0;
+  padding: 12px 0;
+}
+
 @media (max-width: 768px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
   .content-card {
     padding: 20px;
   }

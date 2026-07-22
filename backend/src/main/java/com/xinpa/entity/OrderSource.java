@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 订单来源字典（全局，管理员维护）
+ * 订单来源字典
  */
 @Data
 @TableName("order_source")
@@ -18,6 +18,8 @@ public class OrderSource {
     private Integer sortOrder;
     /** 0禁用 1启用 */
     private Integer status;
+    /** 所属用户ID */
+    private Long userId;
     private LocalDateTime createdAt;
     @TableLogic
     private Integer deleted;

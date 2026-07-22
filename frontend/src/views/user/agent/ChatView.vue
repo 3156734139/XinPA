@@ -219,7 +219,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, nextTick, onMounted } from 'vue';
-import { sendChatMessage, getChatHistory, clearChatHistory, confirmOrder } from '@/api/agent';
+import { sendChatMessage, getChatHistory, clearChatHistory, confirmOrder as confirmAgentOrder } from '@/api/agent';
 
 /** 后端返回的预览数据 */
 interface PreviewData {
@@ -363,7 +363,7 @@ async function confirmOrder(msgIdx: number) {
       applyVipDiscount: orderForm.applyVipDiscount,
     };
 
-    const res: any = await confirmOrder(msg.preview.confirmToken, edits);
+    const res: any = await confirmAgentOrder(msg.preview.confirmToken, edits);
     const result = res.data;
     if (result && result.success) {
       msg.cardState = 'success';

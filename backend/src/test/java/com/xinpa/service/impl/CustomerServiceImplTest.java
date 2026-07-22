@@ -186,7 +186,7 @@ class CustomerServiceImplTest {
             stats.put("total_spend", new BigDecimal("3000"));
             when(orderMapper.selectCustomerStats(1L)).thenReturn(stats);
 
-            when(vipLevelService.listEnabled()).thenReturn(defaultVipLevels);
+            when(vipLevelService.listEnabled(100L)).thenReturn(defaultVipLevels);
 
             customerService.refreshCustomerStats(1L);
 
@@ -208,7 +208,7 @@ class CustomerServiceImplTest {
             stats.put("total_spend", new BigDecimal("300"));
             when(orderMapper.selectCustomerStats(1L)).thenReturn(stats);
 
-            when(vipLevelService.listEnabled()).thenReturn(defaultVipLevels);
+            when(vipLevelService.listEnabled(100L)).thenReturn(defaultVipLevels);
 
             customerService.refreshCustomerStats(1L);
 
@@ -226,7 +226,7 @@ class CustomerServiceImplTest {
             stats.put("total_spend", new BigDecimal("800"));
             when(orderMapper.selectCustomerStats(1L)).thenReturn(stats);
 
-            when(vipLevelService.listEnabled()).thenReturn(defaultVipLevels);
+            when(vipLevelService.listEnabled(100L)).thenReturn(defaultVipLevels);
 
             customerService.refreshCustomerStats(1L);
 
@@ -244,7 +244,7 @@ class CustomerServiceImplTest {
             stats.put("total_spend", new BigDecimal("50000"));
             when(orderMapper.selectCustomerStats(1L)).thenReturn(stats);
 
-            when(vipLevelService.listEnabled()).thenReturn(defaultVipLevels);
+            when(vipLevelService.listEnabled(100L)).thenReturn(defaultVipLevels);
 
             customerService.refreshCustomerStats(1L);
 
@@ -258,7 +258,7 @@ class CustomerServiceImplTest {
             when(customerMapper.selectById(1L)).thenReturn(existingCustomer);
             when(orderMapper.selectCustomerStats(1L)).thenReturn(null);
 
-            when(vipLevelService.listEnabled()).thenReturn(defaultVipLevels);
+            when(vipLevelService.listEnabled(100L)).thenReturn(defaultVipLevels);
 
             customerService.refreshCustomerStats(1L);
 

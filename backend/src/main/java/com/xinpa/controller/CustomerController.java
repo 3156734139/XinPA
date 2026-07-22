@@ -43,10 +43,13 @@ public class CustomerController {
             @RequestParam(required = false) Integer maxOrders,
             @RequestParam(required = false) Integer blacklist,
             @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "20") long size) {
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false) String sortOrder) {
         return Result.ok(PageResult.of(
                 customerService.page(UserContext.getUserId(), keyword, sourceId,
-                        spendLevel, minSpend, maxSpend, minOrders, maxOrders, blacklist, current, size)));
+                        spendLevel, minSpend, maxSpend, minOrders, maxOrders, blacklist, current, size,
+                        sortField, sortOrder)));
     }
 
     /**
@@ -63,7 +66,7 @@ public class CustomerController {
         int level = 0;
         String levelName = null;
         Integer levelDiscount = null;
-        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        List<VipLevel> vipLevels = vipLevelService.listEnabled(UserContext.getUserId());
         for (VipLevel vl : vipLevels) {
             if (total != null && total.compareTo(vl.getThreshold()) >= 0 && vl.getLevel() > level) {
                 level = vl.getLevel();
@@ -143,7 +146,7 @@ public class CustomerController {
      */
     @GetMapping("/vip-configs")
     public Result<List<VipLevel>> vipConfigs() {
-        return Result.ok(vipLevelService.listEnabled());
+        return Result.ok(vipLevelService.listEnabled(UserContext.getUserId()));
     }
 
     /**

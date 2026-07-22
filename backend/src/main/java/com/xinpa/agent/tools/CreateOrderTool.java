@@ -59,8 +59,9 @@ public class CreateOrderTool implements AgentTool {
         properties.put("startTime", Map.of("type", "string", "description", "开始时间，格式 yyyy-MM-dd HH:mm（必填）"));
         properties.put("endTime", Map.of("type", "string", "description", "结束时间，格式 yyyy-MM-dd HH:mm（必填）"));
         properties.put("unitPrice", Map.of("type", "number", "description", "单价（必填）"));
-        properties.put("packageId", Map.of("type", "number", "description", "套餐ID（可选）"));
-        properties.put("paymentMethod", Map.of("type", "string", "description", "支付方式：微信/支付宝/现金等（可选）"));
+        properties.put("packageId", Map.of("type", "number", "description", "套餐ID（必填）"));
+        properties.put("orderSource", Map.of("type", "number", "description", "来源ID（必填，如 1=pw店 2=抖音 3=小红书 4=其他）"));
+        properties.put("paymentMethodId", Map.of("type", "number", "description", "支付方式ID（必填）"));
         properties.put("settleRatio", Map.of("type", "number", "description", "到手比例，默认100（可选）"));
         properties.put("title", Map.of("type", "string", "description", "订单标题（可选）"));
         // confirm 模式专用
@@ -69,7 +70,7 @@ public class CreateOrderTool implements AgentTool {
         return Map.of(
                 "type", "object",
                 "properties", properties,
-                "required", List.of("customerId", "startTime", "endTime", "unitPrice")
+                "required", List.of("customerId", "startTime", "endTime", "unitPrice", "packageId", "orderSource", "paymentMethodId")
         );
     }
 
@@ -94,10 +95,18 @@ public class CreateOrderTool implements AgentTool {
             Long packageId = args.get("packageId") != null
                     ? ((Number) args.get("packageId")).longValue() : null;
 
+            Integer orderSource = args.get("orderSource") != null
+                    ? ((Number) args.get("orderSource")).intValue() : null;
+            Long paymentMethodId = args.get("paymentMethodId") != null
+                    ? ((Number) args.get("paymentMethodId")).longValue() : null;
+
             if (customerId == null) return err("缺少必填字段：customerId");
             if (startTimeStr == null) return err("缺少必填字段：startTime");
             if (endTimeStr == null) return err("缺少必填字段：endTime");
             if (unitPrice == null) return err("缺少必填字段：unitPrice");
+            if (packageId == null) return err("缺少必填字段：packageId");
+            if (orderSource == null) return err("缺少必填字段：orderSource");
+            if (paymentMethodId == null) return err("缺少必填字段：paymentMethodId");
 
             LocalDateTime startTime = LocalDateTime.parse(startTimeStr, DTF);
             LocalDateTime endTime = LocalDateTime.parse(endTimeStr, DTF);
@@ -118,7 +127,7 @@ public class CreateOrderTool implements AgentTool {
                 var pkg = pricePackageService.getById(packageId);
                 if (pkg != null) {
                     packageName = pkg.getName();
-                    isPackageFlatRate = pkg.getPackageType() != null && pkg.getPackageType() != 1;
+                    isPackageFlatRate = !"小时".equals(pkg.getUnit());
                 }
             }
 
@@ -152,7 +161,7 @@ public class CreateOrderTool implements AgentTool {
                     args.get("applyVipDiscount") instanceof Boolean
                             ? (Boolean) args.get("applyVipDiscount") : true;
             if (applyVip) {
-                BigDecimal vipDiscount = calcVipDiscount(customerId, afterRatio);
+                BigDecimal vipDiscount = calcVipDiscount(userId, customerId, afterRatio);
                 discount = discount.add(vipDiscount);
             }
 
@@ -168,6 +177,8 @@ public class CreateOrderTool implements AgentTool {
             pd.customerName = customer.getNickname();
             pd.packageId = packageId;
             pd.packageName = packageName;
+            pd.orderSource = orderSource;
+            pd.paymentMethodId = paymentMethodId;
             pd.startTime = startTimeStr;
             pd.endTime = endTimeStr;
             pd.unitPrice = unitPrice;
@@ -240,6 +251,12 @@ public class CreateOrderTool implements AgentTool {
             if (edits.containsKey("packageId")) {
                 pd.packageId = ((Number) edits.get("packageId")).longValue();
             }
+            if (edits.containsKey("orderSource")) {
+                pd.orderSource = ((Number) edits.get("orderSource")).intValue();
+            }
+            if (edits.containsKey("paymentMethodId")) {
+                pd.paymentMethodId = ((Number) edits.get("paymentMethodId")).longValue();
+            }
         }
 
         try {
@@ -247,9 +264,11 @@ public class CreateOrderTool implements AgentTool {
             order.setUserId(userId);
             order.setCustomerId(pd.customerId);
             order.setPackageId(pd.packageId);
+            order.setOrderSource(pd.orderSource);
             order.setTitle(pd.title);
             order.setUnitPrice(pd.unitPrice);
             order.setPaymentMethod(pd.paymentMethod);
+            order.setPaymentMethodId(pd.paymentMethodId);
             order.setSettleRatio(pd.settleRatio);
             order.setApplyVipDiscount(pd.applyVipDiscount);
             order.setStartTime(LocalDateTime.parse(pd.startTime, DTF));
@@ -300,13 +319,13 @@ public class CreateOrderTool implements AgentTool {
         return hours + extra;
     }
 
-    private BigDecimal calcVipDiscount(Long customerId, BigDecimal afterRatio) {
+    private BigDecimal calcVipDiscount(Long userId, Long customerId, BigDecimal afterRatio) {
         if (customerId == null) return BigDecimal.ZERO;
         Customer customer = customerService.getById(customerId);
         if (customer == null || customer.getSpendLevel() == null || customer.getSpendLevel() <= 0) {
             return BigDecimal.ZERO;
         }
-        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        List<VipLevel> vipLevels = vipLevelService.listEnabled(userId);
         for (VipLevel vl : vipLevels) {
             if (vl.getLevel().equals(customer.getSpendLevel())
                     && vl.getDiscount() != null && vl.getDiscount() < 100) {
@@ -329,6 +348,8 @@ public class CreateOrderTool implements AgentTool {
         String customerName;
         Long packageId;
         String packageName;
+        Integer orderSource;
+        Long paymentMethodId;
         String startTime;
         String endTime;
         BigDecimal unitPrice;

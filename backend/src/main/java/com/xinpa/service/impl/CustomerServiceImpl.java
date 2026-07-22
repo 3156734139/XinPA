@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,8 @@ public class CustomerServiceImpl implements CustomerService {
     public Page<Customer> page(Long userId, String keyword, Long sourceId,
                                Integer spendLevel, BigDecimal minSpend, BigDecimal maxSpend,
                                Integer minOrders, Integer maxOrders, Integer isBlacklist,
-                               long current, long size) {
+                               long current, long size,
+                               String sortField, String sortOrder) {
         LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<Customer>()
                 .eq(Customer::getUserId, userId)
                 .eq(Customer::getDeleted, 0)
@@ -52,14 +54,36 @@ public class CustomerServiceImpl implements CustomerService {
                 .ge(minSpend != null, Customer::getTotalSpend, minSpend)
                 .le(maxSpend != null, Customer::getTotalSpend, maxSpend)
                 .ge(minOrders != null, Customer::getOrderCount, minOrders)
-                .le(maxOrders != null, Customer::getOrderCount, maxOrders)
-                .orderByDesc(Customer::getCreatedAt);
+                .le(maxOrders != null, Customer::getOrderCount, maxOrders);
+
         if (keyword != null && !keyword.isEmpty()) {
             String kw = keyword.trim();
             wrapper.and(w -> w.like(Customer::getNickname, kw)
                     .or().like(Customer::getContact, kw));
         }
-        return customerMapper.selectPage(new Page<>(current, size), wrapper);
+
+        // 动态排序：默认按创建时间倒序
+        boolean asc = "asc".equalsIgnoreCase(sortOrder);
+        if (sortField != null && !sortField.isEmpty()) {
+            switch (sortField) {
+                case "orderCount" -> wrapper.orderBy(true, asc, Customer::getOrderCount);
+                case "totalSpend" -> wrapper.orderBy(true, asc, Customer::getTotalSpend);
+                case "spendLevel" -> wrapper.orderBy(true, asc, Customer::getSpendLevel);
+                case "firstOrderTime" -> wrapper.orderBy(true, asc, Customer::getFirstOrderTime);
+                default -> wrapper.orderByDesc(Customer::getCreatedAt);
+            }
+        } else {
+            wrapper.orderByDesc(Customer::getCreatedAt);
+        }
+
+        Page<Customer> page = customerMapper.selectPage(new Page<>(current, size), wrapper);
+
+        // 计算陪伴天数
+        for (Customer c : page.getRecords()) {
+            c.setCompanionDays(calcCompanionDays(c.getFirstOrderTime(), c.getCreatedAt()));
+        }
+
+        return page;
     }
 
     @Override
@@ -157,11 +181,16 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setTotalSpend(total);
         if (count > 0) {
             customer.setLastOrderTime(LocalDateTime.now());
+
+            // 首次下单时间：首次有订单时填充，后续不再更新
+            if (customer.getFirstOrderTime() == null && stats.get("first_order_time") != null) {
+                customer.setFirstOrderTime((LocalDateTime) stats.get("first_order_time"));
+            }
         }
 
         // 根据VIP等级配置计算优惠等级
         int level = 0;
-        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        List<VipLevel> vipLevels = vipLevelService.listEnabled(customer.getUserId());
         for (VipLevel vl : vipLevels) {
             if (total.compareTo(vl.getThreshold()) >= 0 && vl.getLevel() > level) {
                 level = vl.getLevel();
@@ -170,5 +199,15 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setSpendLevel(level);
 
         customerMapper.updateById(customer);
+    }
+
+    /**
+     * 计算陪伴天数：有首次下单时间则从该日算起，否则按创建时间算，最少 1 天
+     */
+    private Integer calcCompanionDays(LocalDateTime firstOrderTime, LocalDateTime createdAt) {
+        LocalDateTime base = firstOrderTime != null ? firstOrderTime : createdAt;
+        if (base == null) return 1;
+        long days = java.time.temporal.ChronoUnit.DAYS.between(base.toLocalDate(), LocalDate.now());
+        return (int) Math.max(1, days + 1); // 当天算第1天
     }
 }

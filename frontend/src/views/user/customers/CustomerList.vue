@@ -78,26 +78,26 @@
         </div>
       </el-form>
 
-      <el-table :data="list" stripe>
+      <el-table :data="list" stripe @sort-change="handleSortChange">
         <el-table-column prop="nickname" label="昵称" />
-        <el-table-column label="陪伴天数" width="100">
+        <el-table-column label="陪伴天数" width="110" sortable="custom" prop="firstOrderTime">
           <template #default="{ row }">
-            {{ row.createdAt ? companionDays(row.createdAt) : '-' }}
+            {{ row.companionDays ? companionDays(row) : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="contact" label="联系方式" width="160" />
         <el-table-column label="来源" width="100">
           <template #default="{ row }">{{ row.sourceId ? getSourceName(row.sourceId) : (row.source || '-') }}</template>
         </el-table-column>
-        <el-table-column prop="orderCount" label="下单次数" width="100" />
-        <el-table-column label="累计消费" width="120">
+        <el-table-column prop="orderCount" label="下单次数" width="110" sortable="custom" />
+        <el-table-column label="累计消费" width="130" sortable="custom" prop="totalSpend">
           <template #default="{ row }">
             <el-link :underline="false" @click="showOrderHistory(row)" style="cursor: pointer;color:#E8789A;font-weight:600">
               {{ row.totalSpend ?? '-' }}
             </el-link>
           </template>
         </el-table-column>
-        <el-table-column label="优惠等级" width="150">
+        <el-table-column label="优惠等级" width="150" sortable="custom" prop="spendLevel">
           <template #header>
             <span>
               优惠等级
@@ -133,7 +133,7 @@
       </el-table>
 
       <el-pagination
-        v-model:current="current"
+        v-model:current-page="current"
         v-model:page-size="size"
         :total="total"
         :page-sizes="[5, 10, 20]"
@@ -191,7 +191,7 @@
         </el-table-column>
       </el-table>
       <el-pagination
-        v-model:current="orderPage"
+        v-model:current-page="orderPage"
         v-model:page-size="orderPageSize"
         :total="orderTotal"
         :page-sizes="[5, 10, 20]"
@@ -257,6 +257,8 @@ const filterForm = reactive({
   maxSpend: undefined as number | undefined,
   minOrders: undefined as number | undefined,
   maxOrders: undefined as number | undefined,
+  sortField: '',
+  sortOrder: '',
 });
 
 function getSourceName(id: number): string {
@@ -269,9 +271,14 @@ function getVipLabel(level: number): string {
   return v.discount != null && v.discount < 100 ? `${v.name}（${v.discount}折）` : v.name;
 }
 
-function companionDays(createdAt: string): string {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000) + 1;
-  return `${days}天`;
+function companionDays(row: any): string {
+  // 优先用后端计算的陪伴天数，没有则按创建时间算
+  if (row.companionDays != null) return `${row.companionDays}天`;
+  if (row.createdAt) {
+    const days = Math.floor((Date.now() - new Date(row.createdAt).getTime()) / 86400000) + 1;
+    return `${Math.max(1, days)}天`;
+  }
+  return '1天';
 }
 
 onMounted(async () => {
@@ -317,10 +324,24 @@ async function loadList() {
   if (filterForm.maxSpend !== undefined) params.maxSpend = filterForm.maxSpend;
   if (filterForm.minOrders !== undefined) params.minOrders = filterForm.minOrders;
   if (filterForm.maxOrders !== undefined) params.maxOrders = filterForm.maxOrders;
+  if (filterForm.sortField) params.sortField = filterForm.sortField;
+  if (filterForm.sortOrder) params.sortOrder = filterForm.sortOrder;
 
   const res: any = await getCustomers(params);
   list.value = res.data?.records || [];
   total.value = res.data?.total || 0;
+}
+
+function handleSortChange({ prop, order }: { prop?: string; order?: string }) {
+  if (prop && order) {
+    filterForm.sortField = prop;
+    filterForm.sortOrder = order === 'ascending' ? 'asc' : 'desc';
+  } else {
+    filterForm.sortField = '';
+    filterForm.sortOrder = '';
+  }
+  current.value = 1;
+  loadList();
 }
 
 function search() {
@@ -337,6 +358,8 @@ function resetFilter() {
   filterForm.maxSpend = undefined;
   filterForm.minOrders = undefined;
   filterForm.maxOrders = undefined;
+  filterForm.sortField = '';
+  filterForm.sortOrder = '';
   search();
 }
 

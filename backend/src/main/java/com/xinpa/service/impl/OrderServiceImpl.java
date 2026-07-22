@@ -54,8 +54,23 @@ public class OrderServiceImpl implements OrderService {
                 .eq(Order::getUserId, query.getUserId())
                 .eq(query.getOrderSource() != null, Order::getOrderSource, query.getOrderSource())
                 .eq(query.getCustomerId() != null, Order::getCustomerId, query.getCustomerId())
-                .eq(Order::getDeleted, 0)
-                .orderByDesc(Order::getCreatedAt);
+                .eq(Order::getDeleted, 0);
+
+        // 动态排序：默认按开始时间倒序
+        String sortField = query.getSortField();
+        boolean asc = "asc".equalsIgnoreCase(query.getSortOrder());
+        if (sortField != null && !sortField.isEmpty()) {
+            switch (sortField) {
+                case "startTime" -> wrapper.orderBy(true, asc, Order::getStartTime);
+                case "endTime" -> wrapper.orderBy(true, asc, Order::getEndTime);
+                case "finalAmount" -> wrapper.orderBy(true, asc, Order::getFinalAmount);
+                case "actualMinutes" -> wrapper.orderBy(true, asc, Order::getActualMinutes);
+                case "createdAt" -> wrapper.orderBy(true, asc, Order::getCreatedAt);
+                default -> wrapper.orderByDesc(Order::getStartTime);
+            }
+        } else {
+            wrapper.orderByDesc(Order::getStartTime);
+        }
 
         if (query.getStartDate() != null) {
             wrapper.ge(Order::getCreatedAt, query.getStartDate().atStartOfDay());
@@ -83,6 +98,12 @@ public class OrderServiceImpl implements OrderService {
             wrapper.and(w -> w.like(Order::getOrderNo, kw)
                     .or().like(Order::getPackageName, kw)
                     .or().like(Order::getTitle, kw));
+        }
+        if (query.getStartTimeStart() != null) {
+            wrapper.ge(Order::getStartTime, query.getStartTimeStart().atStartOfDay());
+        }
+        if (query.getStartTimeEnd() != null) {
+            wrapper.le(Order::getStartTime, query.getStartTimeEnd().plusDays(1).atStartOfDay());
         }
         return orderMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
     }
@@ -112,7 +133,8 @@ public class OrderServiceImpl implements OrderService {
             PricePackage pkg = pricePackageMapper.selectById(order.getPackageId());
             if (pkg != null) {
                 order.setPackageName(pkg.getName());
-                flatRate = pkg.getPackageType() != null && pkg.getPackageType() != 1;
+                order.setUnit(pkg.getUnit());
+                flatRate = !"小时".equals(pkg.getUnit());
             }
         }
         if (order.getTitle() == null || order.getTitle().isEmpty()) {
@@ -145,6 +167,11 @@ public class OrderServiceImpl implements OrderService {
             order.setTotalAmount(total);
         }
 
+        // 无套餐时自动推断计价单位
+        if (order.getUnit() == null) {
+            order.setUnit(overnight ? "次" : "小时");
+        }
+
         BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio() : new BigDecimal("100");
         BigDecimal afterRatio = order.getTotalAmount().multiply(ratio).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
@@ -167,7 +194,7 @@ public class OrderServiceImpl implements OrderService {
         record.setCategory("陪玩收入");
         record.setPaymentMethod(resolvePaymentMethod(order, null));
         record.setAmount(order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO);
-        record.setRecordDate(LocalDate.now());
+        record.setRecordDate(order.getStartTime() != null ? order.getStartTime().toLocalDate() : LocalDate.now());
         financeRecordMapper.insert(record);
 
         customerService.refreshCustomerStats(order.getCustomerId());
@@ -195,7 +222,10 @@ public class OrderServiceImpl implements OrderService {
             boolean flatRate = false;
             if (pkgId != null) {
                 PricePackage pkg = pricePackageMapper.selectById(pkgId);
-                flatRate = pkg != null && pkg.getPackageType() != null && pkg.getPackageType() != 1;
+                if (pkg != null) {
+                    order.setUnit(pkg.getUnit());
+                    flatRate = !"小时".equals(pkg.getUnit());
+                }
             }
 
             BigDecimal unitPrice = order.getUnitPrice() != null ? order.getUnitPrice() : existing.getUnitPrice();
@@ -211,6 +241,11 @@ public class OrderServiceImpl implements OrderService {
                 order.setBilledMinutes((int) (billableHours * 60));
                 BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(billableHours));
                 order.setTotalAmount(total);
+            }
+
+            // 无套餐时保留原有计价单位或推断
+            if (order.getUnit() == null) {
+                order.setUnit(existing.getUnit() != null ? existing.getUnit() : (overnight ? "次" : "小时"));
             }
 
             BigDecimal ratio = order.getSettleRatio() != null ? order.getSettleRatio()
@@ -251,7 +286,8 @@ public class OrderServiceImpl implements OrderService {
                 newRecord.setCategory("陪玩收入");
                 newRecord.setPaymentMethod(resolvePaymentMethod(order, existing));
                 newRecord.setAmount(finalAmount);
-                newRecord.setRecordDate(LocalDate.now());
+                LocalDateTime startTime = order.getStartTime() != null ? order.getStartTime() : existing.getStartTime();
+                newRecord.setRecordDate(startTime != null ? startTime.toLocalDate() : LocalDate.now());
                 financeRecordMapper.insert(newRecord);
             }
         }
@@ -273,7 +309,7 @@ public class OrderServiceImpl implements OrderService {
         if (customer == null || customer.getSpendLevel() == null || customer.getSpendLevel() <= 0) {
             return BigDecimal.ZERO;
         }
-        List<VipLevel> vipLevels = vipLevelService.listEnabled();
+        List<VipLevel> vipLevels = vipLevelService.listEnabled(customer.getUserId());
         for (VipLevel vl : vipLevels) {
             if (vl.getLevel().equals(customer.getSpendLevel()) && vl.getDiscount() != null && vl.getDiscount() < 100) {
                 return afterRatio.multiply(BigDecimal.valueOf(100 - vl.getDiscount()))

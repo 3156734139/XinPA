@@ -64,12 +64,6 @@ public class AuthController {
     public Result<LoginVO> login(@Valid @RequestBody LoginRequest request) {
         String phone = request.getPhone();
         SysUser user = sysUserService.getByPhone(phone);
-        if (user == null) {
-            throw new BusinessException(401, "该手机号未注册");
-        }
-        if (user.getStatus() == 0) {
-            throw new BusinessException(401, "账号已被禁用");
-        }
 
         if ("sms".equals(request.getLoginType())) {
             // 验证码登录
@@ -79,6 +73,13 @@ public class AuthController {
             boolean verified = smsCodeService.verifyCode(phone, request.getCode());
             if (!verified) {
                 throw new BusinessException("验证码错误或已过期");
+            }
+            // 未注册 → 自动一键注册（手机号当昵称，无密码，仅验证码登录）
+            if (user == null) {
+                user = sysUserService.registerByPhone(phone, phone, null);
+            }
+            if (user.getStatus() == 0) {
+                throw new BusinessException(401, "账号已被禁用");
             }
         } else if ("password".equals(request.getLoginType())) {
             // 密码登录

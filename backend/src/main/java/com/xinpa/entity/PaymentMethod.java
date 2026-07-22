@@ -18,6 +18,7 @@ public class PaymentMethod {
     private Integer sortOrder;
     /** 0禁用 1启用 */
     private Integer status;
+    private Long userId;
     private LocalDateTime createdAt;
     @TableLogic
     private Integer deleted;

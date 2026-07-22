@@ -84,7 +84,7 @@
         </div>
       </el-form>
 
-      <el-table :data="list" stripe v-loading="loading">
+      <el-table :data="list" stripe v-loading="loading" @sort-change="handleSortChange">
         <el-table-column prop="orderNo" label="订单号" width="180" />
         <el-table-column label="套餐名称" min-width="130">
           <template #default="{ row }">{{ row.packageName || '-' }}</template>
@@ -102,23 +102,23 @@
             {{ getCustomerName(row.customerId) || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="时长" width="80">
-          <template #default="{ row }">{{ formatDuration({ actualMinutes: row.actualMinutes }) }}</template>
+        <el-table-column label="时长" width="90" sortable="custom" prop="actualMinutes">
+          <template #default="{ row }">{{ formatDuration({ actualMinutes: row.billedMinutes ?? row.actualMinutes }) }}</template>
         </el-table-column>
-        <el-table-column prop="finalAmount" label="金额(元)" width="100" />
+        <el-table-column prop="finalAmount" label="金额(元)" width="120" sortable="custom" />
         <el-table-column label="支付方式" width="90">
           <template #default="{ row }">{{ getPaymentMethodName(row.paymentMethodId) || row.paymentMethod || '-' }}</template>
         </el-table-column>
         <el-table-column label="到手比例" width="90">
           <template #default="{ row }">{{ row.settleRatio ?? 100 }}%</template>
         </el-table-column>
-        <el-table-column label="开始时间" width="160">
+        <el-table-column label="开始时间" width="160" sortable="custom" prop="startTime">
           <template #default="{ row }">{{ formatDateTime(row.startTime) }}</template>
         </el-table-column>
-        <el-table-column label="结束时间" width="160">
+        <el-table-column label="结束时间" width="160" sortable="custom" prop="endTime">
           <template #default="{ row }">{{ formatDateTime(row.endTime) }}</template>
         </el-table-column>
-        <el-table-column label="创建时间" width="160">
+        <el-table-column label="创建时间" width="160" sortable="custom" prop="createdAt">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right">
@@ -130,7 +130,7 @@
       </el-table>
 
       <el-pagination
-        v-model:current="query.current"
+        v-model:current-page="query.current"
         v-model:page-size="query.size"
         :total="total"
         :page-sizes="[5, 10, 20]"
@@ -204,8 +204,11 @@
         <el-form-item v-if="actualMinutes > 0" label="实际时长">
           <span style="color:#666">{{ actualDuration }}</span>
         </el-form-item>
-        <el-form-item v-if="selectedPackageType === 1 && actualMinutes > 0" label="计费时长">
+        <el-form-item v-if="actualMinutes > 0" label="计费时长">
           <span style="color:#e8789a;font-weight:bold">{{ billableDuration }}</span>
+          <span v-if="billableDuration !== actualDuration" style="color:#999;font-size:12px;margin-left:6px">
+            （实际{{ actualDuration }}，按规则进位）
+          </span>
         </el-form-item>
 
         <el-form-item label="支付方式" prop="paymentMethodId">
@@ -271,11 +274,17 @@
             <span class="summary-label">费用合计</span>
             <span class="summary-amount">¥{{ finalAmount.toFixed(2) }}</span>
             <span class="summary-parenthesis">
-              <template v-if="currentVip && form.applyVipDiscount">
-                （到手比例{{ form.settleRatio }}%，{{ currentVip.name }}打{{ currentVip.discount }}折 → ¥{{ finalAmount.toFixed(2) }}）
+              <template v-if="isHourlyBilling">
+                {{ billableDuration }} × ¥{{ form.unitPrice }}/h
               </template>
               <template v-else>
-                （到手比例{{ form.settleRatio }}%）
+                统一定价 ¥{{ form.unitPrice }}
+              </template>
+              = ¥{{ rawAmount.toFixed(2) }}
+              <template v-if="form.settleRatio !== 100 || (currentVip && form.applyVipDiscount)">
+                <template v-if="form.settleRatio !== 100"> × {{ form.settleRatio }}%</template>
+                <template v-if="currentVip && form.applyVipDiscount"> × {{ currentVip.discount }}折({{ 100 - currentVip.discount }}%off)</template>
+                = ¥{{ estimatedAmount.toFixed(2) }}
               </template>
             </span>
           </div>
@@ -348,6 +357,8 @@ const query = reactive({
   maxAmount: undefined as number | undefined,
   minMinutes: undefined as number | undefined,
   maxMinutes: undefined as number | undefined,
+  sortField: 'startTime',
+  sortOrder: 'desc',
   current: 1,
   size: 5,
 });
@@ -376,6 +387,7 @@ const formRules: FormRules = {
     }
   }, trigger: 'change' }],
   paymentMethodId: [{ required: true, message: '请选择支付方式', trigger: 'change' }],
+  packageId: [{ required: true, message: '请选择套餐', trigger: 'change' }],
   unitPrice: [{ required: true, message: '请输入单价', trigger: 'blur' }],
   settleRatio: [{ required: true, message: '请输入到手比例', trigger: 'blur' }],
 };
@@ -422,10 +434,17 @@ const billableDuration = computed(() => {
   return `${hours}h${mins}min`;
 });
 
+/** 当前所选套餐是否为小时单（按unit判断） */
+const isHourlyBilling = computed(() => {
+  if (!form.packageId) return true; // 未选套餐时默认小时计费
+  const pkg = packageList.value.find(p => p.id === form.packageId);
+  return pkg ? pkg.unit === '小时' : true;
+});
+
 /** 原始费用：非小时单按统一定价，小时单按计费小时算 */
 const rawAmount = computed(() => {
   if (actualMinutes.value <= 0) return 0;
-  if (selectedPackageType.value !== 1) return form.unitPrice || 0;
+  if (!isHourlyBilling.value) return form.unitPrice || 0;
   return calcBillableHours(actualMinutes.value) * (form.unitPrice || 0);
 });
 
@@ -506,6 +525,8 @@ async function loadList() {
       customerId: query.customerId,
       keyword: query.keyword || undefined,
       packageName: query.packageName || undefined,
+      sortField: query.sortField,
+      sortOrder: query.sortOrder,
       current: query.current,
       size: query.size,
     };
@@ -525,6 +546,19 @@ async function loadList() {
   }
 }
 
+function handleSortChange({ prop, order }: { prop?: string; order?: string }) {
+  if (prop && order) {
+    query.sortField = prop;
+    query.sortOrder = order === 'ascending' ? 'asc' : 'desc';
+  } else {
+    // 取消排序 → 恢复默认按开始时间倒序
+    query.sortField = 'startTime';
+    query.sortOrder = 'desc';
+  }
+  query.current = 1;
+  loadList();
+}
+
 function handleSearch() {
   query.current = 1;
   loadList();
@@ -540,6 +574,8 @@ function handleReset() {
   query.maxAmount = undefined;
   query.minMinutes = undefined;
   query.maxMinutes = undefined;
+  query.sortField = 'startTime';
+  query.sortOrder = 'desc';
   query.current = 1;
   loadList();
 }

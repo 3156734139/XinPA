@@ -21,6 +21,7 @@ public class VipLevel {
     private Integer discount;
     /** 等级福利描述 */
     private String benefits;
+    private Long userId;
     private Integer sortOrder;
     /** 0禁用 1启用 */
     private Integer status;

@@ -24,14 +24,19 @@
             <div class="fee-row">
               <span class="fee-amount">¥{{ order.finalAmount }}</span>
               <span class="fee-detail">
-                （单价{{ order.unitPrice }}元/时 × 计费{{ billableHours }}时 到手{{ order.settleRatio }}%
+                <template v-if="order.unit === '小时'">
+                  （单价{{ order.unitPrice }}元/时 × 计费{{ billableHours }}时 到手{{ order.settleRatio }}%
+                </template>
+                <template v-else>
+                  （单价{{ order.unitPrice }}元/{{ order.unit || '次' }} 到手{{ order.settleRatio }}%
+                </template>
                 <template v-if="vipLabel"> · {{ vipLabel }}</template>
                 <template v-if="order.discountAmount > 0"> · 优惠{{ order.discountAmount }}元</template>）
               </span>
             </div>
           </el-descriptions-item>
 
-          <el-descriptions-item label="单价">{{ order.unitPrice }} 元/时</el-descriptions-item>
+          <el-descriptions-item label="单价">{{ order.unitPrice }} 元/{{ order.unit || '时' }}</el-descriptions-item>
           <el-descriptions-item label="结算比例">{{ order.settleRatio || 100 }}%</el-descriptions-item>
           <el-descriptions-item label="实际时长">{{ actualMinutesText }}</el-descriptions-item>
           <el-descriptions-item label="时长偏差">
@@ -40,8 +45,7 @@
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="优惠">{{ order.discountAmount > 0 ? '-' + order.discountAmount + '元' : '无' }}</el-descriptions-item>
-          <el-descriptions-item label="通宵单">{{ order.isOvernight ? '是' : '否' }}</el-descriptions-item>
-          <el-descriptions-item label="线下单">{{ order.isOffline ? '是' : '否' }}</el-descriptions-item>
+          <el-descriptions-item label="订单类型">{{ order.unit === '小时' ? '小时单' : '非小时单' }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ formatTime(order.startTime) }}</el-descriptions-item>
           <el-descriptions-item label="结束时间">{{ formatTime(order.endTime) }}</el-descriptions-item>
           <el-descriptions-item label="结算时间">{{ formatTime(order.settleTime) }}</el-descriptions-item>

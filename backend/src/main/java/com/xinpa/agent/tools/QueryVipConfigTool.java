@@ -40,7 +40,7 @@ public class QueryVipConfigTool implements AgentTool {
     @Override
     public String execute(Long userId, String argsJson) {
         try {
-            List<VipLevel> levels = vipLevelService.listEnabled();
+            List<VipLevel> levels = vipLevelService.listEnabled(userId);
             List<Map<String, Object>> data = levels.stream().map(v -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("level", v.getLevel());

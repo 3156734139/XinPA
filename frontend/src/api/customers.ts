@@ -40,21 +40,6 @@ export function removeBlacklist(id: number) {
   return request.delete(`/customers/${id}/blacklist`);
 }
 
-/** 优惠券列表 */
-export function getCoupons(customerId?: number) {
-  return request.get('/customers/coupons', { params: { customerId } });
-}
-
-/** 发放优惠券 */
-export function createCoupon(data: any) {
-  return request.post('/customers/coupons', data);
-}
-
-/** 作废优惠券 */
-export function cancelCoupon(id: number) {
-  return request.delete(`/customers/coupons/${id}`);
-}
-
 /** 客户消费排行榜 */
 export function getSpendingRanking() {
   return request.get('/customers/spending-ranking');

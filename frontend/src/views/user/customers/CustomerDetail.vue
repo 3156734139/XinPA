@@ -59,7 +59,7 @@
         </el-table-column>
       </el-table>
       <el-pagination
-        v-model:current="orderPage"
+        v-model:current-page="orderPage"
         v-model:page-size="orderPageSize"
         :total="orderTotal"
         layout="prev, pager, next"

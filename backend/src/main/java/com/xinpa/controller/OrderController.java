@@ -42,7 +42,11 @@ public class OrderController {
             @RequestParam(required = false) Integer maxMinutes,
             @RequestParam(required = false) String packageName,
             @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "20") long size) {
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false) String sortOrder,
+            @RequestParam(required = false) LocalDate startTimeStart,
+            @RequestParam(required = false) LocalDate startTimeEnd) {
         OrderQueryDTO query = new OrderQueryDTO();
         query.setUserId(UserContext.getUserId());
         query.setOrderSource(source);
@@ -57,6 +61,10 @@ public class OrderController {
         query.setPackageName(packageName);
         query.setCurrent(current);
         query.setSize(size);
+        query.setSortField(sortField);
+        query.setSortOrder(sortOrder);
+        query.setStartTimeStart(startTimeStart);
+        query.setStartTimeEnd(startTimeEnd);
         return Result.ok(PageResult.of(orderService.page(query)));
     }
 
